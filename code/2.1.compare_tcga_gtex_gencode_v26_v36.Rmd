@@ -1,0 +1,128 @@
+---
+title: "MitoSignatures"
+author: "Isabel Duarte"
+date: "2023-06-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = TRUE)
+
+library(here)
+library(tidyverse)
+
+```
+
+
+##### Compare Gencode annotation files | Gencode v26 and v36
+
+Compare by gene name and genomic coordinates 
+
+
+```{r compare_gtf, warning=FALSE}
+
+# NOTE | The annotation files were download manually from:
+# https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_36/gencode.v36.annotation.gtf.gz
+# https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_36/gencode.v36.annotation.gff3.gz
+
+# https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.annotation.gtf.gz
+# https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/gencode.v26.annotation.gff3.gz
+
+####
+
+# Path to the GTF files
+gtf_file_v26 <- here("data/annotation_files/gencode.v26.annotation.gtf")
+gtf_file_v36 <- here("data/annotation_files/gencode.v36.annotation.gtf")
+
+# Read the GTF files
+gtf_v26 <- read_delim(gtf_file_v26, 
+                      delim = "\t", escape_double = FALSE, 
+                      col_names = c("chromosome_name",
+                                    "annotation_source",
+                                    "feature_type",
+                                    "genomic_start",
+                                    "genomic_end",
+                                    "score",
+                                    "genomic_strand",
+                                    "genomic_phase",
+                                    "attributes"), 
+                      trim_ws = TRUE, comment = "#")
+
+gtf_v36 <- read_delim(gtf_file_v36, 
+                      delim = "\t", escape_double = FALSE, 
+                      col_names = c("chromosome_name",
+                                    "annotation_source",
+                                    "feature_type",
+                                    "genomic_start",
+                                    "genomic_end",
+                                    "score",
+                                    "genomic_strand",
+                                    "genomic_phase",
+                                    "attributes"), 
+                      trim_ws = TRUE, comment = "#")
+
+# Filter only the gene feature
+gtf_v26_genes <- filter (gtf_v26,
+                         feature_type == "gene") 
+
+gtf_v36_genes <- filter (gtf_v36,
+                         feature_type == "gene") 
+
+
+# Intersect both gene annotation sets
+gtf_common_genes <- inner_join(
+  gtf_v26_genes,
+  gtf_v36_genes,
+  by = c("chromosome_name",
+         "annotation_source",
+         "feature_type",
+         "genomic_start",
+         "genomic_end",
+         "score",
+         "genomic_strand",
+         "genomic_phase")
+)
+
+# Get the ENSEMBL gene id from the attributes column
+gtf_common_genes$gene_id_v26 <- sub('.*gene_id\\s+"(ENSG\\d+(\\.\\d+)?(\\S+)?)".*', '\\1', gtf_common_genes$attributes.x)
+gtf_common_genes$gene_id_v36 <- sub('.*gene_id\\s+"(ENSG\\d+(\\.\\d+)?(\\S+)?)".*', '\\1', gtf_common_genes$attributes.y)
+
+# Compare the two gene_id columns
+unique_genes_v26 <- gtf_common_genes$gene_id_v26[!gtf_common_genes$gene_id_v26 %in% gtf_common_genes$gene_id_v36]
+unique_genes_v36 <- gtf_common_genes$gene_id_v36[!gtf_common_genes$gene_id_v36 %in% gtf_common_genes$gene_id_v26]
+
+# Test if the only difference is in gene version number (numbers after the stable identifier and the .)
+genes_v26_not_36 <- unique_genes_v26[!(gsub("\\.\\d+","", unique_genes_v26) %in% gsub("\\.\\d+","", unique_genes_v36))]
+genes_v36_not_26 <- unique_genes_v36[!(gsub("\\.\\d+","", unique_genes_v36) %in% gsub("\\.\\d+","", unique_genes_v26))]
+
+# Identity of the different genes (using the stable identifier only)
+genes_v36_not_26[order(genes_v36_not_26)]
+genes_v26_not_36[order(genes_v26_not_36)]
+
+```
+
+## PCA from TCGA GTEx combined counts
+
+```{r pca_analysis, warning=FALSE}
+
+# Load data
+combined_pca_result <- readRDS(here("data/processed/combined_pca_result.RDS"))
+
+# Create a dataframe with PC scores, patient id, and study
+data.frame(PC1 = combined_pca_result$x[, 1],
+           PC2 = combined_pca_result$x[, 2]) %>% 
+  rownames_to_column(var="patient_id") %>%
+  mutate(study = case_when(grepl("^TCGA", patient_id) ~ "TCGA",
+                           grepl("^GTEX", patient_id) ~ "GTEX",
+                           TRUE ~ NA_character_)) -> pca_scores_df
+
+# Look at the results: PC1 vs PC2 scatter plot
+ggplot(pca_scores_df, aes(x = PC1, y = PC2, color=study)) +
+  geom_point(alpha=0.5) +
+  xlab("PC1") +
+  ylab("PC2") +
+  ggtitle("PCA Plot | Combined TCGA and GTEx data")
+
+
+```
+

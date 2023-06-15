@@ -1,0 +1,246 @@
+---
+title: "MitoSignatures"
+author: "Isabel Duarte"
+date: "2023-05-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = TRUE)
+
+library(here)
+library(TCGAbiolinks)
+library(SummarizedExperiment)
+library(tidyverse)
+library(readxl)
+
+```
+
+
+## Installing required packages
+
+```{r download_TCGA, eval=FALSE}
+
+# if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("TCGAbiolinks")
+
+```
+
+## Download TCGA data & Generate summarizedExperiment
+
+```{r download_TCGA, eval=FALSE}
+
+### TCGA data downloaded in 15 May 2023 
+
+## Create the required directories, only if they do not exist already 
+# raw_data directory
+if (!dir.exists(here('data/raw/TCGA/raw_data/'))) {
+  dir.create(here('data/raw/TCGA/raw_data/'), recursive = TRUE)
+}
+# processed_data directory
+if (!(dir.exists(here('data/TCGA/processed_data/')))) {
+  dir.create(here('data/TCGA/processed_data/'), recursive = TRUE)
+}
+
+## The path to save data
+tcga_data_path <- here('data/raw/TCGA/raw_data/')
+
+## Set the list of cancer types
+cancer_types <- c("TCGA-BLCA",  # bladder
+                  "TCGA-SKCM",  # skin
+                  "TCGA-COAD",  # colon
+                  "TCGA-GBM", "TCGA-LGG",                 # brain
+                  "TCGA-LIHC", "TCGA-CHOL",               # liver
+                  "TCGA-KIRC", "TCGA-KICH", "TCGA-KIRP")  # kidney
+
+## The list to save the query data and the prepared data (summarizedExperiment objects) (UNCOMMENT when needed to re-download)
+# tcga_query <- list()     # Uncomment only if required to reset the whole list
+# tcga_data_se <- list()   # Uncomment only if required to reset the whole list
+
+## Loop through each cancer type and download the gene expression data
+for (cancer_type in cancer_types) {
+  
+  ## Remove dash from cancer_type name
+  cancer_type2 <- gsub('-', '_', cancer_type)
+  
+  ## Query the database for data for the specified cancer type and data type
+  tcga_query[[cancer_type2]] <- GDCquery(project = cancer_type, 
+                                         data.category = "Transcriptome Profiling", 
+                                         data.type = "Gene Expression Quantification",
+                                         workflow.type = "STAR - Counts",
+                                         legacy = FALSE)
+  
+  ## Download the files retrieved from the query
+  GDCdownload(query = tcga_query[[cancer_type2]],
+              method = "api",
+              directory = tcga_data_path,
+              files.per.chunk = 10)
+
+  ## Prepare the data (create a summarizedExperiment object, and add some clinical data)
+  tcga_data_se[[cancer_type2]] <- GDCprepare(query = tcga_query[[cancer_type2]],
+                                             save = TRUE,
+                                             save.filename = here("data/TCGA/processed_data", 
+                                                                  paste0(cancer_type, ".RData")),
+                                             directory = tcga_data_path,
+                                             summarizedExperiment = TRUE)
+
+}
+
+## Check the tissue of origin for all summarizedExperiments
+lapply(tcga_data_se, \(x) table(as.data.frame(colData(x))$tissue_or_organ_of_origin, useNA="ifany"))
+
+## Save the TCGA data objects | Slow step
+   ## (RDS files are more compact than .RData objects. This step is a bit slow! Be patient!)
+saveRDS(tcga_query, file = here("data/raw/TCGA/tcga_data_query.RDS"))
+saveRDS(tcga_data_se, file = here("data/processed/tcga_data_se.RDS"))
+
+```
+
+## Download GTEx data
+
+```{r download_gtex, eval=FALSE}
+
+### GTEx data downloaded in 15 May 2023 
+
+## Create the required directories, only if they do not exist already 
+# GTEx raw_data directory
+if (!dir.exists(here('data/raw/GTEx/raw_data'))) {
+  dir.create(here('data/raw/GTEx/raw_data/'), recursive = TRUE)
+}
+
+# Base URL for the data to download
+gtex_base_url <- "https://storage.googleapis.com/gtex_analysis_v8/rna_seq_data/gene_reads/"
+# File names to download
+gtex_file_names <- c("gene_reads_2017-06-05_v8_brain_cortex.gct.gz",
+                     "gene_reads_2017-06-05_v8_skin_sun_exposed_lower_leg.gct.gz",
+                     "gene_reads_2017-06-05_v8_skin_not_sun_exposed_suprapubic.gct.gz", 
+                     "gene_reads_2017-06-05_v8_liver.gct.gz", 
+                     "gene_reads_2017-06-05_v8_kidney_medulla.gct.gz", 
+                     "gene_reads_2017-06-05_v8_kidney_cortex.gct.gz", 
+                     "gene_reads_2017-06-05_v8_bladder.gct.gz", 
+                     "gene_reads_2017-06-05_v8_colon_sigmoid.gct.gz", 
+                     "gene_reads_2017-06-05_v8_colon_transverse.gct.gz")
+
+# Loop over the file names and download each file
+for (file_name in gtex_file_names) {
+  # Create the full URL for the current file
+  url <- paste0(gtex_base_url, file_name)
+  
+  # Download the file and save it to disk (UNCOMMENT when needed to re-download)
+  # download.file(url, destfile = here("data/raw/GTEx/raw_data", file_name))
+  
+}
+
+```
+
+### Read GTEx data
+
+```{r read_gtex, eval=FALSE}
+
+## GTEx files download from https://www.gtexportal.org/home/datasets
+
+## GTEx file names
+gtex_file_names <- c("gene_reads_2017-06-05_v8_brain_cortex.gct.gz",
+                     "gene_reads_2017-06-05_v8_skin_sun_exposed_lower_leg.gct.gz",
+                     "gene_reads_2017-06-05_v8_skin_not_sun_exposed_suprapubic.gct.gz", 
+                     "gene_reads_2017-06-05_v8_liver.gct.gz", 
+                     "gene_reads_2017-06-05_v8_kidney_medulla.gct.gz", 
+                     "gene_reads_2017-06-05_v8_kidney_cortex.gct.gz", 
+                     "gene_reads_2017-06-05_v8_bladder.gct.gz", 
+                     "gene_reads_2017-06-05_v8_colon_sigmoid.gct.gz", 
+                     "gene_reads_2017-06-05_v8_colon_transverse.gct.gz")
+
+## Create list to save all gtex data
+gtex_data <- list()
+
+## Loop over the file names and read each file
+for (file_name in gtex_file_names) {
+  
+  ## Parse the file name to get the tissue name
+  tissue_name <- gsub(pattern = "^.*_v8_(.*)\\.gct\\.gz$", 
+                      replacement = "\\1", 
+                      file_name)
+  
+  # Create the file path
+  gtex_file_path <- here("data/raw/GTEx/raw_data", file_name)
+  
+  # Read the file and save it to a list (skip the first 2 lines that are not relevant data)
+  gtex_data[[tissue_name]] <- readr::read_delim(gtex_file_path, col_names = TRUE, 
+                                                delim = "\t", skip = 2, 
+                                                comment = "",
+                                                quote = "",
+                                                name_repair = "unique")
+}
+
+## Save the GTEx data object
+saveRDS(gtex_data, file = here("data/processed/gtex.RDS"))
+
+```
+
+## Download MitoCarta3.0 data
+
+```{r download_mitocarta, eval=FALSE}
+
+## Create the required directories, only if they do not exist already 
+# MitoCarta3.0 directory
+if (!dir.exists(here('data/raw/MitoCarta'))) {
+  dir.create(here('data/raw/MitoCarta'))
+}
+
+
+### MitoCarta data downloaded in 15 May 2023 (UNCOMMENT when needed to re-download)
+
+mitocarta_url <- "https://personal.broadinstitute.org/scalvo/MitoCarta3.0/Human.MitoCarta3.0.xls"
+
+# download.file(mitocarta_url, destfile = here("data/raw/MitoCarta/Human.MitoCarta3.0.xls"))
+
+```
+
+### Read MitoCarta3.0 data
+
+```{r read_mitocarta, eval=FALSE}
+
+## Set the path to mitocarta data (excel file)
+mitocarta_path <- here("data/raw/MitoCarta/Human.MitoCarta3.0.xls")
+
+## Create list to save all mitocarta sheets
+mitocarta_data <- list()
+
+## Read each data sheet 
+
+# Specify the column type to avoid mistakes with reading in the data
+a_hmitocarta_col_types <- c(rep("text", 10), rep("numeric", 3), rep("text", 3), rep("numeric", 2),
+                            "text", rep("numeric", 2), rep("text", 4), rep("numeric", 7), "text", 
+                            rep("numeric", 14), "text")
+
+# Sheet A Human MitoCarta3.0
+mitocarta_data$A_Human_MitoCarta3 <- read_xls(mitocarta_path, 
+                                              sheet = "A Human MitoCarta3.0",
+                                              col_names = TRUE,
+                                              col_types = a_hmitocarta_col_types,
+                                              na = c("NA", ""))
+# Sheet B Human All Genes
+mitocarta_data$B_Human_All_Genes <- read_xls(mitocarta_path, 
+                                             sheet = "B Human All Genes",
+                                              col_names = TRUE,
+                                             col_types = a_hmitocarta_col_types,
+                                              na = c("NA", ""))
+# Sheet C MitoPathways
+mitocarta_data$C_MitoPathways <- read_xls(mitocarta_path, 
+                                          sheet = "C MitoPathways",
+                                          col_names = TRUE,
+                                          col_types = "text",
+                                          na = c("NA", ""))
+
+mitocarta_data$C_MitoPathways %>%
+  select(2:4) -> mitocarta_data$C_MitoPathways # WORKAROUND to discard empty columns
+
+## Save the mitocarta data object
+saveRDS(mitocarta_data, file = here("data/processed/mitocarta.RDS"))
+
+```
+
+
+

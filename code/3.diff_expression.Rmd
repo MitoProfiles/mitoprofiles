@@ -1,0 +1,474 @@
+---
+title: "MitoSignatures"
+author: "Isabel Duarte"
+date: "2023-05-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = TRUE)
+
+library(here)
+library(tidyverse)
+library(edgeR)
+
+```
+
+## Differential expression | GTEx
+
+```{r gtex, eval=TRUE}
+
+# Create list to hold GTEx objects
+gtex_de <- list()
+
+# Load data and sample metadata
+gtex_de$data_clean <- readRDS(here("data/processed/gtex_data_clean.RDS"))
+
+# Ensure the sample metadata matches the identity and order of the columns in the expression data
+
+if (identical(colnames(gtex_de$data_clean$combined_counts)[-1],
+              gtex_de$data_clean$metadata$sample_id)) {
+  print("PASS | The identity and order of the vectors are the same.")
+} else {
+  print("REJECT | The identity and order of the vectors are different.")
+}
+
+# Check how many rows have at least one NA (NAs are not permitted by DGEList function)
+gtex_de$counts_NAs <- gtex_de$data_clean$combined_counts[complete.cases(gtex_de$data_clean$combined_counts) == FALSE, ]
+  
+# Transform count data-frame to matrix with row names required by EdgeR
+# and remove NAs (if they exist)
+gtex_de$counts_matrix <- gtex_de$data_clean$combined_counts %>%
+  na.omit() %>%
+  column_to_rownames(var = "gene_id") %>%
+  as.matrix()
+
+#
+##
+### edgeR analysis
+##
+#
+
+# Create a DGEList object
+gtex_de$dge_data <- DGEList(counts = gtex_de$counts_matrix)
+
+
+# Set up the design matrix | Estimate coefficients for each organ independently
+
+# gtex_de$design <- model.matrix(~ 0 + organ,
+#                        data = gtex_de$data_clean$metadata)
+
+gtex_de$design <- model.matrix(~ 0 + metabolic_rate,
+                       data = gtex_de$data_clean$metadata)
+
+# Set up the contrasts matrix
+
+# # Make the contrasts for high versus low metabolic-rate organs:
+# # requires the sum of the coefficients for each metabolic-rate level
+# # divided by 3 (average) | high - low
+# gtex_de$contrasts <- limma::makeContrasts(
+#   (organbrain+organkidney+organliver)/3 -
+#     (organbladder+organcolon+organskin)/3,
+#   levels=colnames(gtex_de$design)
+# )
+# # Change column names
+# colnames(gtex_de$contrasts) <- c("brain_kidney_liver_VS_bladder_colon_skin")
+
+# Make the contrasts for low versus high metabolic rate
+gtex_de$contrasts <- limma::makeContrasts(
+  metabolic_ratehigh - metabolic_ratelow,
+  levels=colnames(gtex_de$design)
+)
+# Change column names
+colnames(gtex_de$contrasts) <- c("metab_high_VS_metab_low")
+
+
+# Filter low-expression genes | Requires a gene to have a normalized count of at least 10 in at least k samples, where k is the smallest group size
+gtex_de$keep <- filterByExpr(gtex_de$dge_data,
+                                   design = gtex_de$design)
+gtex_de$dge_data_filtered <- gtex_de$dge_data[gtex_de$keep, , keep.lib.sizes=FALSE]
+
+# Perform Library Size Normalization | Slow step
+gtex_de$dge_data_filtered <- calcNormFactors(gtex_de$dge_data_filtered) # more recent edgeR uses normLibSizes()
+
+# Estimate dispersions | Slow step
+gtex_de$dge_data_filtered <- estimateDisp(gtex_de$dge_data_filtered,
+                                                design = gtex_de$design)
+
+# Perform likelihood ratio tests
+# Fit the negative binomial generalized log-linear model
+gtex_de$fit <- glmFit(gtex_de$dge_data_filtered,
+                            design=gtex_de$design,
+                   contrast = gtex_de$contrasts)
+
+# Perform likelihood ratio tests | Slow step
+gtex_de$lrt <- glmLRT(gtex_de$fit)   
+
+# Get the topTags
+gtex_de$topGenes <- topTags(gtex_de$lrt, n=NULL,
+                         adjust.method = "BH", 
+                         sort.by = "PValue", 
+                         p.value = 0.05)
+
+# Save the diff expression analysis results
+saveRDS(gtex_de, file = here("data/analysis/gtex_de.RDS"))
+
+```
+
+
+## Differential expression | TCGA
+
+
+```{r tcga, eval=TRUE}
+
+# Create list to hold TCGA objects
+tcga_de <- list()
+
+# Load data and sample metadata
+tcga_de$data_clean <- readRDS(here("data/processed/tcga_data_clean.RDS"))
+
+# Ensure the sample metadata matches the identity and order of the columns in the expression data
+
+if (identical(colnames(tcga_de$data_clean$combined_counts)[-1],
+              tcga_de$data_clean$metadata$sample_id)) {
+  print("PASS | The identity and order of the vectors are the same.")
+} else {
+  print("REJECT | The identity and order of the vectors are different.")
+}
+
+# Check how many rows have at least one NA (NAs are not permitted by DGEList function)
+tcga_de$counts_NAs <- tcga_de$data_clean$combined_counts[complete.cases(tcga_de$data_clean$combined_counts) == FALSE, ]
+  
+# Transform count data-frame to matrix with row names required by EdgeR
+# and remove NAs (if they exist)
+tcga_de$counts_matrix <- tcga_de$data_clean$combined_counts %>%
+  na.omit() %>%
+  column_to_rownames(var = "gene_id") %>%
+  as.matrix()
+  
+#
+##
+### edgeR analysis
+##
+#
+
+# Create a DGEList object
+tcga_de$dge_data <- DGEList(counts = tcga_de$counts_matrix)
+
+# Set up the design matrix
+
+tcga_de$design <- model.matrix(~ 0 + metabolic_rate,
+                            data = tcga_de$data_clean$metadata)
+
+# tcga_de$design <- model.matrix(~ 0 + organ,
+#                             data = tcga_de$data_clean$metadata)
+
+# Set up the contrasts matrix
+
+# Make the contrasts for high versus low metabolic-rate organs:
+tcga_de$contrasts <- limma::makeContrasts(
+  metabolic_ratehigh - metabolic_ratelow,
+  levels=colnames(tcga_de$design)
+)
+# Change column names
+colnames(tcga_de$contrasts) <- c("metab_high_VS_metab_low")
+
+
+# # Make the contrasts for high versus low metabolic-rate organs:
+# # requires the sum of the coefficients for each metabolic-rate level
+# # divided by 3 (average) | high - low
+# tcga_de$contrasts <- limma::makeContrasts(
+#   (organbrain+organkidney+organliver)/3 -
+#     (organbladder+organcolon+organskin)/3,
+#   levels=colnames(tcga_de$design)
+# )
+# # Change column names
+# colnames(tcga_de$contrasts) <- c("brain_kidney_liver_VS_bladder_colon_skin")
+
+
+# Filter low-expression genes
+tcga_de$keep <- filterByExpr(tcga_de$dge_data,
+                          design = tcga_de$design)
+tcga_de$dge_data_filtered <- tcga_de$dge_data[tcga_de$keep, , keep.lib.sizes=FALSE]
+
+# Perform Library Size Normalization | Slow step
+tcga_de$dge_data_filtered <- calcNormFactors(tcga_de$dge_data_filtered)
+
+# Estimate dispersions | Slow step
+tcga_de$dge_data_filtered <- estimateDisp(tcga_de$dge_data_filtered,
+                                       design = tcga_de$design)
+
+### To perform likelihood ratio tests
+# Fit the negative binomial generalized log-linear model
+tcga_de$fit <- glmFit(tcga_de$dge_data_filtered,
+                   design=tcga_de$design,
+                   contrast = tcga_de$contrasts)
+
+# Perform likelihood ratio tests
+tcga_de$lrt <- glmLRT(tcga_de$fit)
+
+# Extract the differentially expressed genes
+tcga_de$topGenes <- topTags(tcga_de$lrt, n=NULL,
+                         adjust.method = "BH", 
+                         sort.by = "PValue", 
+                         p.value = 0.05)
+
+# Save the diff expression analysis results
+saveRDS(tcga_de, file = here("data/analysis/tcga_de.RDS"))
+
+```
+
+
+## Differential expression | Combined TCGA and GTEx | Model WITHOUT interaction terms
+
+```{r combined1, eval=TRUE}
+
+# Create list to hold analysis objects
+combined_de_no_interaction <- list()
+
+# Load data and sample metadata
+combined_de_no_interaction$data_clean$combined_counts <- readRDS(here("data/processed/combined_counts_tcga_gtex.RDS"))
+combined_de_no_interaction$data_clean$metadata <- readRDS(here("data/processed/combined_metadata_tcga_gtex.RDS"))
+
+# Ensure the sample metadata matches the identity and order of the columns in the expression data
+
+if (identical(colnames(combined_de_no_interaction$data_clean$combined_counts)[-1],
+              combined_de_no_interaction$data_clean$metadata$sample_id)) {
+  print("PASS | The identity and order of the vectors are the same.")
+} else {
+  print("REJECT | The identity and order of the vectors are different.")
+}
+
+# Check how many rows have at least one NA (NAs are not permitted by DGEList function)
+combined_de_no_interaction$counts_NAs <- combined_de_no_interaction$data_clean$combined_counts[complete.cases(combined_de_no_interaction$data_clean$combined_counts) == FALSE, ]
+
+# Transform count data-frame to matrix with row names required by EdgeR
+# and remove NAs (if they exist)
+combined_de_no_interaction$counts_matrix <- combined_de_no_interaction$data_clean$combined_counts %>%
+  na.omit() %>%
+  column_to_rownames(var = "gene_id") %>%
+  as.matrix()
+
+#
+##
+### edgeR analysis
+##
+#
+
+# Create a DGEList object
+combined_de_no_interaction$dge_data <- DGEList(counts = combined_de_no_interaction$counts_matrix)
+
+
+#
+##
+### Model design without interaction terms
+##
+#
+
+# Set up the design matrix
+combined_de_no_interaction$design <- model.matrix(~ 0 + metabolic_rate + cancer_status,
+                                                  data = combined_de_no_interaction$data_clean$metadata)
+
+# Set up the contrasts matrix
+combined_de_no_interaction$contrasts <- limma::makeContrasts(
+  (metabolic_ratehigh - metabolic_ratelow),
+  levels=colnames(combined_de_no_interaction$design)
+)
+
+# # Change column names
+colnames(combined_de_no_interaction$contrasts) <- c("MetRateHigh_vs_MetRateLow")
+
+
+# Filter low-expression genes
+combined_de_no_interaction$keep <- filterByExpr(combined_de_no_interaction$dge_data,
+                                                design = combined_de_no_interaction$design)
+combined_de_no_interaction$dge_data_filtered <- combined_de_no_interaction$dge_data[combined_de_no_interaction$keep, , keep.lib.sizes=FALSE]
+
+# Perform Library Size Normalization | Slow step
+combined_de_no_interaction$dge_data_filtered <- calcNormFactors(combined_de_no_interaction$dge_data_filtered)
+
+# Estimate dispersions | Slow step
+combined_de_no_interaction$dge_data_filtered <- estimateDisp(combined_de_no_interaction$dge_data_filtered,
+                                                             design = combined_de_no_interaction$design)
+
+### To perform likelihood ratio tests
+# Fit the negative binomial generalized log-linear model
+combined_de_no_interaction$fit <- glmFit(combined_de_no_interaction$dge_data_filtered,
+                                         design=combined_de_no_interaction$design,
+                                         contrast = combined_de_no_interaction$contrasts)
+
+# Perform likelihood ratio tests
+combined_de_no_interaction$lrt <- glmLRT(combined_de_no_interaction$fit)
+
+# Extract the differentially expressed genes
+combined_de_no_interaction$topGenes <- topTags(combined_de_no_interaction$lrt, n=NULL,
+                                               adjust.method = "BH", 
+                                               sort.by = "PValue", 
+                                               p.value = 0.05)
+
+
+### Save the diff expression analysis results
+saveRDS(combined_de_no_interaction, file = here("data/analysis/combined_de_no_interaction.RDS"))
+
+```
+
+
+
+# NOTE - CODE AFTER THIS SECTION IS STILL UNDER DEVELOPMENT
+
+## Differential expression | Combined TCGA and GTEx | Model WITH interaction terms
+
+
+```{r combined, eval=TRUE}
+
+# Create list to hold analysis objects
+combined_de_with_interaction <- list()
+
+# Load data and sample metadata
+combined_de_with_interaction$data_clean$combined_counts <-
+  readRDS(here("data/processed/combined_counts_tcga_gtex.RDS"))
+combined_de_with_interaction$data_clean$metadata <-
+  readRDS(here("data/processed/combined_metadata_tcga_gtex.RDS"))
+
+# Ensure the sample metadata matches the identity and order of the columns in the expression data
+
+if (identical(
+  colnames(combined_de_with_interaction$data_clean$combined_counts)[-1],
+  combined_de_with_interaction$data_clean$metadata$sample_id
+)) {
+  print("PASS | The identity and order of the vectors are the same.")
+} else {
+  print("REJECT | The identity and order of the vectors are different.")
+}
+
+# Transform count data-frame to matrix with row names required by EdgeR
+# and remove NAs (if they exist)
+combined_de_with_interaction$counts_matrix <-
+  combined_de_with_interaction$data_clean$combined_counts %>%
+  na.omit() %>%
+  column_to_rownames(var = "gene_id") %>%
+  as.matrix()
+
+#
+##
+### edgeR analysis
+##
+#
+
+# Create a DGEList object
+combined_de_with_interaction$dge_data <-
+  DGEList(counts = combined_de_with_interaction$counts_matrix)
+
+
+#
+##
+### Model design with interaction term between metabolic_rate and cancer_status
+##
+#
+
+# combined_de_with_interaction$design <-
+#   model.matrix(
+#     ~ 0 + metabolic_rate +
+#       cancer_status +
+#       cancer_status:metabolic_rate,
+#     data = combined_de_with_interaction$data_clean$metadata
+#   )
+# 
+# # Correct the names of the design column (R does not allow : in the names)
+# colnames(combined_de_with_interaction$design) <- sub(":", "_",
+#                                                      colnames(combined_de_with_interaction$design))
+# 
+# # Set up the contrasts matrix
+# combined_de_with_interaction$contrasts <- limma::makeContrasts(
+#   (metabolic_ratehigh - metabolic_ratelow),
+#   levels = colnames(combined_de_with_interaction$design)
+# )
+# 
+# # # Change column names
+# colnames(combined_de_with_interaction$contrasts) <-
+#   c("MetRateHigh_vs_MetRateLow")
+
+
+combined_de_with_interaction$design <-
+  model.matrix(
+    ~ 0 + metabolic_rate:cancer_status,
+    data = combined_de_with_interaction$data_clean$metadata
+  )
+
+# Correct the names of the design column (R does not allow : in the names)
+colnames(combined_de_with_interaction$design) <- 
+  sub(":", "_",
+      colnames(combined_de_with_interaction$design)) %>%
+  sub("metabolic_rate", "", .) %>%
+  sub("cancer_status", "", .)
+  
+
+# Set up the contrasts matrix
+combined_de_with_interaction$contrasts <- limma::makeContrasts(
+  (high_non_cancer - low_non_cancer) - (high_cancer - low_cancer),
+  levels = colnames(combined_de_with_interaction$design)
+)
+
+# # Change column names
+colnames(combined_de_with_interaction$contrasts) <-
+  c("highNonCancer_lowNonCancer_VS_highCancer_lowCancer")
+
+
+# Filter low-expression genes
+combined_de_with_interaction$keep <-
+  filterByExpr(combined_de_with_interaction$dge_data,
+               design = combined_de_with_interaction$design)
+combined_de_with_interaction$dge_data_filtered <-
+  combined_de_with_interaction$dge_data[combined_de_with_interaction$keep, , keep.lib.sizes =
+                                          FALSE]
+
+# Perform Library Size Normalization | Slow step
+combined_de_with_interaction$dge_data_filtered <-
+  calcNormFactors(combined_de_with_interaction$dge_data_filtered)
+
+# Estimate dispersions | Slow step
+combined_de_with_interaction$dge_data_filtered <-
+  estimateDisp(combined_de_with_interaction$dge_data_filtered,
+               design = combined_de_with_interaction$design)
+
+### To perform likelihood ratio tests
+
+# Fit the negative binomial generalized log-linear model USING COEFFICIENT CONTRAST
+# combined_de_with_interaction$fit <-
+#   glmFit(
+#     combined_de_with_interaction$dge_data_filtered,
+#     design = combined_de_with_interaction$design,
+#     contrast = metabolic_ratehigh_cancer_statuscancer
+#   ) # ATTENTION: contrast matrix NOT used
+
+
+# Fit the negative binomial generalized log-linear model USING CONTRAST MATRIX
+combined_de_with_interaction$fit <- glmFit(combined_de_with_interaction$dge_data_filtered,
+                                           design=combined_de_with_interaction$design,
+                                           contrast = combined_de_with_interaction$contrasts) # ATTENTION: contrast matrix USED
+
+
+# Perform likelihood ratio tests
+combined_de_with_interaction$lrt <-
+  glmLRT(combined_de_with_interaction$fit)
+
+# Extract the differentially expressed genes
+combined_de_with_interaction$topGenes <-
+  topTags(
+    combined_de_with_interaction$lrt,
+    n = NULL,
+    adjust.method = "BH",
+    sort.by = "PValue",
+    p.value = 0.05
+  )
+
+
+# Save the diff expression analysis results
+saveRDS(
+  combined_de_with_interaction,
+  file = here("data/analysis/combined_de_with_interaction.RDS")
+)
+
+```
+
+

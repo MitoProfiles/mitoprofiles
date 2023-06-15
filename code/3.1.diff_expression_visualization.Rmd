@@ -1,0 +1,248 @@
+---
+title: "MitoSignatures"
+author: "Isabel Duarte"
+date: "2023-06-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = TRUE)
+
+library(here)
+library(tidyverse)
+library(mitocarta)
+
+```
+
+## Function to plot the most extreme DEGs
+
+```{r degs_plot_function}
+
+## Function to plot the counts for extreme LFC differentially expressed genes
+
+plot_extreme_degs <- function (diff_exprs_list,
+                               n_degs_to_plot = 20,
+                               mito_yes_no = "no") {
+  
+  #### PLOTING FUNCTIONS | START ####
+  boxplot_organ <-
+    function (counts_data, my_title = "Boxplot per Gene") {
+      ggplot(counts_data, aes(x = organ, y = log2(counts + 1))) +
+        geom_boxplot(aes(color = metabolic_rate)) +
+        labs(x = "Organs", y = "Log2 Gene Counts", title = my_title) +
+        theme(axis.text.x = element_text(
+          angle = 90,
+          vjust = 0.5,
+          hjust = 1
+        )) +
+        theme(legend.position = "bottom") +
+        facet_wrap(vars(gene_id), scales = "free_y")
+    }
+  
+  boxplot_organ_and_cancer_status <-
+    function (counts_data, my_title = "Boxplot per Gene and Cancer Status") {
+      ggplot(counts_data, aes(
+        x = interaction(organ, cancer_status),
+        y = log2(counts + 1)
+      )) +
+        geom_boxplot(aes(color = metabolic_rate)) +
+        labs(x = "Organs", y = "Log2 Gene Counts", title = my_title) +
+        theme(axis.text.x = element_text(
+          angle = 90,
+          vjust = 0.5,
+          hjust = 1
+        )) +
+        theme(legend.position = "bottom") +
+        facet_wrap(vars(gene_id), scales = "free_y")
+    }
+  #### PLOTING FUNCTIONS | END ####
+  
+  
+  #### Main Function ####
+  
+  # Create list to hold objets from this analysis
+  deg_analysis <- list()
+  
+  # Get the dataset name
+  dataset_name = rlang::as_label(rlang::enexpr(diff_exprs_list))
+  
+  ###
+  ### Filter mitochondrial genes only
+  ###
+  
+  if (mito_yes_no == "yes") {
+    ### Mitocarta Gene IDs
+    # Get all mitocarta ensembl ids (including the ones with several ids separated by pipe)
+    deg_analysis$mitocarta_gene_ids <-
+      unlist(
+        strsplit(
+          mitocarta::mitocarta_data$A_Human_MitoCarta3$EnsemblGeneID_mapping_version_20200130,
+          "\\|"
+        )
+      )
+    
+    ### Mitochondrial DEGs in toptable data
+    # Get all toptable ensembl ids without the .version (because mitocarta does not have it)
+    deg_analysis$toptable_gene_ids <-
+      gsub(
+        pattern = "(ENSG\\d+)(\\.\\d+)?",
+        replacement = "\\1",
+        row.names(diff_exprs_list$topGenes$table)
+      )
+    
+    # Filter toptable_gene_ids to include only mitocarta genes
+    deg_analysis$mito_toptable_gene_ids <-
+      deg_analysis$toptable_gene_ids[deg_analysis$toptable_gene_ids %in% deg_analysis$mitocarta_gene_ids]
+    
+    # Slice DEGS toptable to include only Mitochondrial top/bottom n_degs_to_plot, sorted by LFC
+      # Important note: Subseting matrices using [] does partial matching for the rownames 
+      # (so it does not match the .version)
+    
+    # Top genes with negative Log Fold Change
+    deg_analysis$low_exprs <-
+      diff_exprs_list$topGenes$table[deg_analysis$mito_toptable_gene_ids, ] %>%
+      dplyr::arrange(logFC) %>%
+      dplyr::slice_head (n = n_degs_to_plot)
+    
+    # Top genes with positive Log Fold Change
+    deg_analysis$high_exprs <-
+      diff_exprs_list$topGenes$table[deg_analysis$mito_toptable_gene_ids, ] %>%
+      dplyr::arrange(logFC) %>%
+      dplyr::slice_tail (n = n_degs_to_plot)
+  }
+  
+  ##
+  ## Do not filter mitochondrial genes
+  ##
+  
+  if (mito_yes_no == "no") {
+    ### Slice DEGS toptable to include only the top/bottom n_degs_to_plot, sorted by LFC
+    # Top genes with negative Log Fold Change
+    deg_analysis$low_exprs <- diff_exprs_list$topGenes$table %>%
+      dplyr::arrange(logFC) %>%
+      dplyr::slice_head (n = n_degs_to_plot)
+    
+    # Top genes with positive Log Fold Change
+    deg_analysis$high_exprs <- diff_exprs_list$topGenes$table %>%
+      dplyr::arrange(logFC) %>%
+      dplyr::slice_tail (n = n_degs_to_plot)
+  }
+  
+  ###
+  ### Common steps
+  ###
+  
+  # Bind the top high and low DEGs
+  deg_analysis$extreme_de <-
+    dplyr::bind_rows (deg_analysis$low_exprs, deg_analysis$high_exprs)
+  
+  
+  ### Create  a tidy dataframe with count values and metadata for selected DEGs
+  # Add the metadata to the counts table (filtered by the genes with extreme LFC)
+  deg_analysis$extreme_de_counts_metadata <-
+    diff_exprs_list$data_clean$combined_counts %>%
+    filter(gene_id %in% row.names(deg_analysis$extreme_de)) %>%
+    pivot_longer(names_to = "sample_id",
+                 values_to = "counts",
+                 cols = -1) %>%
+    left_join(., diff_exprs_list$data_clean$metadata, by = "sample_id")
+  
+  ###
+  ### Plot counts for selected DEGs
+  ###
+  
+  # Boxplot per organ faceted by gene
+  boxplot_organ(
+    counts_data = deg_analysis$extreme_de_counts_metadata,
+    my_title = ifelse(
+      mito_yes_no == "yes",
+      "Extreme Mitochondrial DEGs",
+      "Extreme DEGs"
+    )
+  ) ->
+    deg_analysis$plots$p1_box_gene
+  
+  # Boxplot per organ per cancer status faceted by gene
+  boxplot_organ_and_cancer_status(
+    counts_data = deg_analysis$extreme_de_counts_metadata,
+    my_title = ifelse(
+      mito_yes_no == "yes",
+      paste0("Extreme Mitochondrial DEGs | ", dataset_name),
+      paste0("Extreme DEGs | ", dataset_name)
+    )
+  ) ->
+    deg_analysis$plots$p2_box_gene_cancer
+  
+  ### Return the list with the analysis and plots
+  return(deg_analysis)
+}
+```
+
+## Boxplots of the most extreme DEGs | All genes & Mitochondrial genes 
+
+```{r plots, dependson="degs_plot_function"}
+
+#
+##
+### Boxplots
+##
+#
+
+
+# Load the DE data
+combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+combined_de_no_interaction <- readRDS(file = here("data/analysis/combined_de_no_interaction.RDS"))
+gtex_de <- readRDS(file = here("data/analysis/gtex_de.RDS"))
+tcga_de <- readRDS(file = here("data/analysis/tcga_de.RDS"))
+
+# Create the lists to save the data
+combined_de_interaction_plots <- list() 
+combined_de_no_interaction_plots <- list() 
+tcga_de_plots <- list() 
+gtex_de_plots <- list() 
+
+# Call the function for DEG files for each dataset
+combined_de_interaction_plots$all <- plot_extreme_degs(diff_exprs_list = combined_de_with_interaction,
+                                            n_degs_to_plot = 15,
+                                            mito_yes_no = "no")
+combined_de_no_interaction_plots$all <- plot_extreme_degs(diff_exprs_list = combined_de_no_interaction,
+                                               n_degs_to_plot = 15,
+                                               mito_yes_no = "no")
+tcga_de_plots$all <- plot_extreme_degs(diff_exprs_list = tcga_de,
+                                      n_degs_to_plot = 15,
+                                      mito_yes_no = "no")
+gtex_de_plots$all <- plot_extreme_degs(diff_exprs_list = gtex_de ,
+                                      n_degs_to_plot = 15,
+                                      mito_yes_no = "no")
+
+
+# Call the function for DEG files for each dataset only for mitochondrial genes
+combined_de_interaction_plots$mito <- plot_extreme_degs(diff_exprs_list = combined_de_with_interaction,
+                                            n_degs_to_plot = 15,
+                                            mito_yes_no = "yes")
+combined_de_no_interaction_plots$mito <- plot_extreme_degs(diff_exprs_list = combined_de_no_interaction,
+                                               n_degs_to_plot = 15,
+                                               mito_yes_no = "yes")
+tcga_de_plots$mito <- plot_extreme_degs(diff_exprs_list = tcga_de,
+                                      n_degs_to_plot = 15,
+                                      mito_yes_no = "yes")
+gtex_de_plots$mito <- plot_extreme_degs(diff_exprs_list = gtex_de ,
+                                      n_degs_to_plot = 15,
+                                      mito_yes_no = "yes")
+
+
+# View the plots
+combined_de_interaction_plots$all$plots$p2_box_gene_cancer
+combined_de_no_interaction_plots$all$plots$p2_box_gene_cancer
+gtex_de_plots$all$plots$p2_box_gene_cancer
+tcga_de_plots$all$plots$p2_box_gene_cancer
+
+combined_de_interaction_plots$mito$plots$p2_box_gene_cancer
+combined_de_no_interaction_plots$mito$plots$p2_box_gene_cancer
+gtex_de_plots$mito$plots$p2_box_gene_cancer
+tcga_de_plots$mito$plots$p2_box_gene_cancer
+
+
+```
+
+

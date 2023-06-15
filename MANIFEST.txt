@@ -1,0 +1,4 @@
+id	filename	md5	size	state
+5a49dc8a-9a9d-47b2-bbcb-807ea40f951d	5a49dc8a-9a9d-47b2-bbcb-807ea40f951d/817a34d0-4ed3-417c-ae05-54b3174e2039.rna_seq.augmented_star_gene_counts.tsv	2a03af4ec5ecf1d9d2d60af5469033b3	4239403	validated
+7f418c7b-0001-46c1-b6ec-017ae42c4532	7f418c7b-0001-46c1-b6ec-017ae42c4532/e2052649-97fc-4f97-9a01-992b03e52a7a.rna_seq.augmented_star_gene_counts.tsv	4e52d39dd411af327e5395c71655be88	4254390	validated
+c6b73b52-e80a-4af0-b1fd-6636269e6676	c6b73b52-e80a-4af0-b1fd-6636269e6676/2d1c7f8e-ae1f-4f08-9167-d65dbd1ed1f9.rna_seq.augmented_star_gene_counts.tsv	50165d8e313dba5e18f7e7dc18dc42c0	4236370	validated
