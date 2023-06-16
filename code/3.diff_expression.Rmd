@@ -16,7 +16,7 @@ library(edgeR)
 
 ## Differential expression | GTEx
 
-```{r gtex, eval=TRUE}
+```{r gtex, eval=FALSE}
 
 # Create list to hold GTEx objects
 gtex_de <- list()
@@ -119,7 +119,7 @@ saveRDS(gtex_de, file = here("data/analysis/gtex_de.RDS"))
 ## Differential expression | TCGA
 
 
-```{r tcga, eval=TRUE}
+```{r tcga, eval=FALSE}
 
 # Create list to hold TCGA objects
 tcga_de <- list()
@@ -219,9 +219,9 @@ saveRDS(tcga_de, file = here("data/analysis/tcga_de.RDS"))
 ```
 
 
-## Differential expression | Combined TCGA and GTEx | Model WITHOUT interaction terms
+## Differential expression | Combined TCGA and GTEx | Model ~ 0 + metabolic_rate + cancer_status 
 
-```{r combined1, eval=TRUE}
+```{r combined, eval=FALSE}
 
 # Create list to hold analysis objects
 combined_de_no_interaction <- list()
@@ -316,10 +316,134 @@ saveRDS(combined_de_no_interaction, file = here("data/analysis/combined_de_no_in
 
 # NOTE - CODE AFTER THIS SECTION IS STILL UNDER DEVELOPMENT
 
-## Differential expression | Combined TCGA and GTEx | Model WITH interaction terms
+## Differential expression | Combined TCGA and GTEx | Model ~ 0 + metabolic_rate:cancer_status
 
 
-```{r combined, eval=TRUE}
+```{r combined1, eval=FALSE}
+
+# Create list to hold analysis objects
+combined_de_only_interaction <- list()
+
+# Load data and sample metadata
+combined_de_only_interaction$data_clean$combined_counts <-
+  readRDS(here("data/processed/combined_counts_tcga_gtex.RDS"))
+combined_de_only_interaction$data_clean$metadata <-
+  readRDS(here("data/processed/combined_metadata_tcga_gtex.RDS"))
+
+# Ensure the sample metadata matches the identity and order of the columns in the expression data
+if (identical(
+  colnames(combined_de_only_interaction$data_clean$combined_counts)[-1],
+  combined_de_only_interaction$data_clean$metadata$sample_id
+)) {
+  print("PASS | The identity and order of the vectors are the same.")
+} else {
+  print("REJECT | The identity and order of the vectors are different.")
+}
+
+# Transform count data-frame to matrix with row names required by EdgeR
+# and remove NAs (if they exist)
+combined_de_only_interaction$counts_matrix <-
+  combined_de_only_interaction$data_clean$combined_counts %>%
+  na.omit() %>%
+  column_to_rownames(var = "gene_id") %>%
+  as.matrix()
+
+#
+##
+### edgeR analysis
+##
+#
+
+# Create a DGEList object
+combined_de_only_interaction$dge_data <-
+  DGEList(counts = combined_de_only_interaction$counts_matrix)
+
+
+#
+##
+### Model design with interaction term between metabolic_rate and cancer_status
+##
+#
+
+# Set up the design matrix
+combined_de_only_interaction$design <-
+  model.matrix(
+    ~ 0 + metabolic_rate:cancer_status,
+    data = combined_de_only_interaction$data_clean$metadata
+  )
+
+# Correct the names of the design column (R does not allow : in the names)
+colnames(combined_de_only_interaction$design) <- 
+  sub(":", "_",
+      colnames(combined_de_only_interaction$design)) %>%
+  sub("metabolic_rate", "", .) %>%
+  sub("cancer_status", "", .)
+  
+
+# Set up the contrasts matrix
+combined_de_only_interaction$contrasts <- limma::makeContrasts(
+  (high_non_cancer - low_non_cancer) - (high_cancer - low_cancer),
+  levels = colnames(combined_de_only_interaction$design)
+)
+
+# # Change column names
+colnames(combined_de_only_interaction$contrasts) <-
+  c("highNonCancer_lowNonCancer_VS_highCancer_lowCancer")
+
+
+# Filter low-expression genes
+combined_de_only_interaction$keep <-
+  filterByExpr(combined_de_only_interaction$dge_data,
+               design = combined_de_only_interaction$design)
+combined_de_only_interaction$dge_data_filtered <-
+  combined_de_only_interaction$dge_data[combined_de_only_interaction$keep, , keep.lib.sizes =
+                                          FALSE]
+
+# Perform Library Size Normalization | Slow step
+combined_de_only_interaction$dge_data_filtered <-
+  calcNormFactors(combined_de_only_interaction$dge_data_filtered)
+
+# Estimate dispersions | Slow step
+combined_de_only_interaction$dge_data_filtered <-
+  estimateDisp(combined_de_only_interaction$dge_data_filtered,
+               design = combined_de_only_interaction$design)
+
+
+### Perform likelihood ratio tests
+
+# Fit the negative binomial generalized log-linear model USING CONTRAST MATRIX
+combined_de_only_interaction$fit <- glmFit(combined_de_only_interaction$dge_data_filtered,
+                                           design=combined_de_only_interaction$design,
+                                           contrast = combined_de_only_interaction$contrasts) # ATTENTION: contrast matrix USED
+
+# Perform likelihood ratio tests
+combined_de_only_interaction$lrt <-
+  glmLRT(combined_de_only_interaction$fit)
+
+# Extract the differentially expressed genes
+combined_de_only_interaction$topGenes <-
+  topTags(
+    combined_de_only_interaction$lrt,
+    n = NULL,
+    adjust.method = "BH",
+    sort.by = "PValue",
+    p.value = 0.05
+  )
+
+
+# Save the diff expression analysis results
+saveRDS(
+  combined_de_only_interaction,
+  file = here("data/analysis/combined_de_only_interaction.RDS")
+)
+
+```
+
+
+## Differential expression | Combined TCGA and GTEx | Model ~ 0 + metabolic_rate + cancer_status + metabolic_rate:cancer_status
+
+
+```{r combined2, eval=TRUE}
 
 # Create list to hold analysis objects
 combined_de_with_interaction <- list()
@@ -470,5 +594,4 @@ saveRDS(
 )
 
 ```
-
 

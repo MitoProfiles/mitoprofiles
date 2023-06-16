@@ -16,7 +16,7 @@ library(mitocarta)
 
 ## Function to plot the most extreme DEGs
 
-```{r degs_plot_function}
+```{r boxplot_funct}
 
 ## Function to plot the counts for extreme LFC differentially expressed genes
 
@@ -180,7 +180,7 @@ plot_extreme_degs <- function (diff_exprs_list,
 
 ## Boxplots of the most extreme DEGs | All genes & Mitochondrial genes 
 
-```{r plots, dependson="degs_plot_function"}
+```{r boxplots, dependson="degs_plot_function"}
 
 #
 ##
@@ -231,7 +231,7 @@ gtex_de_plots$mito <- plot_extreme_degs(diff_exprs_list = gtex_de ,
                                       mito_yes_no = "yes")
 
 
-# View the plots
+# View boxplots
 combined_de_interaction_plots$all$plots$p2_box_gene_cancer
 combined_de_no_interaction_plots$all$plots$p2_box_gene_cancer
 gtex_de_plots$all$plots$p2_box_gene_cancer
@@ -242,7 +242,32 @@ combined_de_no_interaction_plots$mito$plots$p2_box_gene_cancer
 gtex_de_plots$mito$plots$p2_box_gene_cancer
 tcga_de_plots$mito$plots$p2_box_gene_cancer
 
+```
+
+## Coefficients of different datasets and models
+
+```{r coef, eval=TRUE}
+
+# Visualize coefficients
+
+
+
+
+hist(gtex_de$lrt$coefficients)
+hist(tcga_de$lrt$coefficients)
+hist(combined_de_no_interaction$lrt$coefficients)
+hist(combined_de_with_interaction$lrt$coefficients)
 
 ```
 
+##
+
+```{r lfc, eval=TRUE}
+
+hist(gtex_de$topGenes$table$logFC)
+hist(tcga_de$topGenes$table$logFC)
+hist(combined_de_no_interaction$topGenes$table$logFC)
+hist(combined_de_with_interaction$topGenes$table$logFC)
+
+```
 

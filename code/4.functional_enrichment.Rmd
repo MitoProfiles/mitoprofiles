@@ -19,12 +19,13 @@ library(gprofiler2)
 
 ## Load Differential Expression analyses results 
 
-```{r load_data, eval=TRUE, warning=FALSE}
+```{r load_data, eval=FALSE, warning=FALSE}
 
 # Load data
-gtex <- readRDS(here("data/analysis/gtex_de.RDS"))
-tcga <- readRDS(here("data/analysis/tcga_de.RDS"))
-combined_tcga_gtex <- readRDS(here("data/analysis/combined_de_with_interaction.RDS"))
+gtex_de <- readRDS(here("data/analysis/gtex_de.RDS"))
+tcga_de <- readRDS(here("data/analysis/tcga_de.RDS"))
+combined_de <- readRDS(here("data/analysis/combined_de_with_interaction.RDS"))
+
 
 ```
 
@@ -36,7 +37,7 @@ combined_tcga_gtex <- readRDS(here("data/analysis/combined_de_with_interaction.R
 gtex_fun <- list()
 
 # Get Entrez Gene identifiers (required by edgeR functions)
-rownames(gtex$lrt) %>%
+rownames(gtex_de$lrt) %>%
   gsub('\\.\\d+', '', .) -> gtex_fun$ensembl_ids
 
 # Convert Ensembl IDs to Entrez Gene IDs
@@ -49,14 +50,14 @@ gtex_fun$entrez_ids <- mapIds(org.Hs.eg.db,
                               multiVals = "first")
 
 # GO analysis
-gtex_fun$go <- edgeR::goana.DGELRT(gtex$lrt, 
+gtex_fun$go <- edgeR::goana.DGELRT(gtex_de$lrt, 
                                    geneid = gtex_fun$entrez_ids,
                                    species = "Hs")
 gtex_fun$top_go <- topGO(gtex_fun$go, sort="up", p.value = 0.05)
 
 
 # KEGG analysis
-gtex_fun$kegg <- edgeR::kegga.DGELRT(gtex$lrt, 
+gtex_fun$kegg <- edgeR::kegga.DGELRT(gtex_de$lrt, 
                                      geneid = gtex_fun$entrez_ids,
                                      species = "Hs")
 gtex_fun$top_kegg <- topKEGG(gtex_fun$kegg, sort="up", p.value = 0.05)
@@ -74,7 +75,7 @@ cat("Finished the GTEx functional enrichment analysis.")
 tcga_fun <- list()
 
 # Get Entrez Gene identifiers (required by edgeR functions)
-rownames(tcga$lrt) %>%
+rownames(tcga_de$lrt) %>%
   gsub('\\.\\d+', '', .) -> tcga_fun$ensembl_ids
 
 # Convert Ensembl IDs to Entrez Gene IDs
@@ -85,14 +86,14 @@ tcga_fun$entrez_ids <- mapIds(org.Hs.eg.db,
                               multiVals = "first")
 
 # GO analysis
-tcga_fun$go <- edgeR::goana.DGELRT(tcga$lrt, 
+tcga_fun$go <- edgeR::goana.DGELRT(tcga_de$lrt, 
                                    geneid = tcga_fun$entrez_ids,
                                    species = "Hs")
 tcga_fun$top_go <- topGO(tcga_fun$go, sort="up", p.value = 0.05)
 
 
 # KEGG analysis
-tcga_fun$kegg <- edgeR::kegga.DGELRT(tcga$lrt, 
+tcga_fun$kegg <- edgeR::kegga.DGELRT(tcga_de$lrt, 
                                      geneid = tcga_fun$entrez_ids,
                                      species = "Hs")
 tcga_fun$top_kegg <- topKEGG(tcga_fun$kegg, sort="up", p.value = 0.05)
@@ -110,7 +111,7 @@ cat("Finished the TCGA functional enrichment analysis.")
 combined_fun <- list()
 
 # Get Entrez Gene identifiers (required by edgeR functions)
-rownames(combined_tcga_gtex$lrt) %>%
+rownames(combined_de$lrt) %>%
   gsub('\\.\\d+', '', .) -> combined_fun$ensembl_ids
 
 # Convert Ensembl IDs to Entrez Gene IDs
@@ -121,14 +122,14 @@ combined_fun$entrez_ids <- mapIds(org.Hs.eg.db,
                               multiVals = "first")
 
 # GO analysis
-combined_fun$go <- edgeR::goana.DGELRT(combined_tcga_gtex$lrt, 
+combined_fun$go <- edgeR::goana.DGELRT(combined_de$lrt, 
                                    geneid = combined_fun$entrez_ids,
                                    species = "Hs")
 combined_fun$top_go <- topGO(combined_fun$go, sort="up", p.value = 0.05)
 
 
 # KEGG analysis
-combined_fun$kegg <- edgeR::kegga.DGELRT(combined_tcga_gtex$lrt, 
+combined_fun$kegg <- edgeR::kegga.DGELRT(combined_de$lrt, 
                                      geneid = combined_fun$entrez_ids,
                                      species = "Hs")
 combined_fun$top_kegg <- topKEGG(combined_fun$kegg, sort="up", p.value = 0.05)
@@ -148,7 +149,7 @@ cat("Finished the Combined GTEx TCGA functional enrichment analysis.")
 ##
 #
 gtex_fun$gprofiler <- gprofiler2::gost(
-  query = gsub('\\.\\d+', '', rownames(gtex$topGenes$table)[1:500]),
+  query = gsub('\\.\\d+', '', rownames(gtex_de$topGenes$table)[1:500]),
   organism = "hsapiens",
   ordered_query = FALSE,
   user_threshold = 0.05,
@@ -168,7 +169,7 @@ cat("Finished the gprofiler GTEx functional enrichment analysis.")
 ##
 #
 tcga_fun$gprofiler <- gprofiler2::gost(
-  query = gsub('\\.\\d+', '', rownames(tcga$topGenes$table)[1:500]),
+  query = gsub('\\.\\d+', '', rownames(tcga_de$topGenes$table)[1:500]),
   organism = "hsapiens",
   ordered_query = FALSE,
   user_threshold = 0.05,
@@ -188,7 +189,7 @@ cat("Finished the gprofiler TCGA functional enrichment analysis.")
 ##
 #
 combined_fun$gprofiler <- gprofiler2::gost(
-  query = gsub('\\.\\d+', '', rownames(combined_tcga_gtex$topGenes$table)[1:500]),
+  query = gsub('\\.\\d+', '', rownames(combined_de$topGenes$table)[1:500]),
   organism = "hsapiens",
   ordered_query = FALSE,
   user_threshold = 0.05,
