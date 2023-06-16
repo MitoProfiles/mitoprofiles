@@ -490,52 +490,27 @@ combined_de_with_interaction$dge_data <-
 ##
 #
 
-# combined_de_with_interaction$design <-
-#   model.matrix(
-#     ~ 0 + metabolic_rate +
-#       cancer_status +
-#       cancer_status:metabolic_rate,
-#     data = combined_de_with_interaction$data_clean$metadata
-#   )
-# 
-# # Correct the names of the design column (R does not allow : in the names)
-# colnames(combined_de_with_interaction$design) <- sub(":", "_",
-#                                                      colnames(combined_de_with_interaction$design))
-# 
-# # Set up the contrasts matrix
-# combined_de_with_interaction$contrasts <- limma::makeContrasts(
-#   (metabolic_ratehigh - metabolic_ratelow),
-#   levels = colnames(combined_de_with_interaction$design)
-# )
-# 
-# # # Change column names
-# colnames(combined_de_with_interaction$contrasts) <-
-#   c("MetRateHigh_vs_MetRateLow")
-
-
+# Set up the design matrix
 combined_de_with_interaction$design <-
   model.matrix(
-    ~ 0 + metabolic_rate:cancer_status,
+    ~ 0 + metabolic_rate +
+      cancer_status +
+      cancer_status:metabolic_rate,
     data = combined_de_with_interaction$data_clean$metadata
   )
 
 # Correct the names of the design column (R does not allow : in the names)
-colnames(combined_de_with_interaction$design) <- 
-  sub(":", "_",
-      colnames(combined_de_with_interaction$design)) %>%
-  sub("metabolic_rate", "", .) %>%
-  sub("cancer_status", "", .)
-  
+colnames(combined_de_with_interaction$design) <- sub(":", "_",
+                                                     colnames(combined_de_with_interaction$design))
 
-# Set up the contrasts matrix
+# # Set up the contrasts matrix | ATTENTION: THIS CONTRAST MATRIX IS NOT ALWAYS USED!
 combined_de_with_interaction$contrasts <- limma::makeContrasts(
-  (high_non_cancer - low_non_cancer) - (high_cancer - low_cancer),
+  (metabolic_ratehigh - metabolic_ratelow),
   levels = colnames(combined_de_with_interaction$design)
 )
-
 # # Change column names
 colnames(combined_de_with_interaction$contrasts) <-
-  c("highNonCancer_lowNonCancer_VS_highCancer_lowCancer")
+  c("MetRateHigh_vs_MetRateLow")
 
 
 # Filter low-expression genes
@@ -555,21 +530,24 @@ combined_de_with_interaction$dge_data_filtered <-
   estimateDisp(combined_de_with_interaction$dge_data_filtered,
                design = combined_de_with_interaction$design)
 
-### To perform likelihood ratio tests
+### Perform likelihood ratio tests
 
-# Fit the negative binomial generalized log-linear model USING COEFFICIENT CONTRAST
+# # Fit the negative binomial generalized log-linear model USING COEFFICIENT CONTRAST NOT CONTRAST MATRIX
+combined_de_with_interaction$fit <-
+  glmFit(
+    combined_de_with_interaction$dge_data_filtered,
+    design = combined_de_with_interaction$design,
+    contrast = metabolic_ratehigh_cancer_statuscancer
+  ) # ATTENTION: contrast matrix NOT used
+
+
+# # Fit the negative binomial generalized log-linear model USING CONTRAST MATRIX
 # combined_de_with_interaction$fit <-
 #   glmFit(
 #     combined_de_with_interaction$dge_data_filtered,
 #     design = combined_de_with_interaction$design,
-#     contrast = metabolic_ratehigh_cancer_statuscancer
-#   ) # ATTENTION: contrast matrix NOT used
-
-
-# Fit the negative binomial generalized log-linear model USING CONTRAST MATRIX
-combined_de_with_interaction$fit <- glmFit(combined_de_with_interaction$dge_data_filtered,
-                                           design=combined_de_with_interaction$design,
-                                           contrast = combined_de_with_interaction$contrasts) # ATTENTION: contrast matrix USED
+#     contrast = combined_de_with_interaction$contrasts
+#   ) # ATTENTION: contrast matrix USED
 
 
 # Perform likelihood ratio tests
