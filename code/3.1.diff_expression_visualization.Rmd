@@ -190,22 +190,28 @@ plot_extreme_degs <- function (diff_exprs_list,
 
 
 # Load the DE data
-combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
-combined_de_no_interaction <- readRDS(file = here("data/analysis/combined_de_no_interaction.RDS"))
 gtex_de <- readRDS(file = here("data/analysis/gtex_de.RDS"))
 tcga_de <- readRDS(file = here("data/analysis/tcga_de.RDS"))
+combined_de_no_interaction <- readRDS(file = here("data/analysis/combined_de_no_interaction.RDS"))
+combined_de_only_interaction <- readRDS(file = here("data/analysis/combined_de_only_interaction.RDS"))
+combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
 
 # Create the lists to save the data
-combined_de_interaction_plots <- list() 
-combined_de_no_interaction_plots <- list() 
-tcga_de_plots <- list() 
 gtex_de_plots <- list() 
+tcga_de_plots <- list() 
+combined_de_no_interaction_plots <- list() 
+combined_de_only_interaction_plots <- list()
+combined_de_with_interaction_plots <- list() 
+
 
 # Call the function for DEG files for each dataset
-combined_de_interaction_plots$all <- plot_extreme_degs(diff_exprs_list = combined_de_with_interaction,
+combined_de_with_interaction_plots$all <- plot_extreme_degs(diff_exprs_list = combined_de_with_interaction,
                                             n_degs_to_plot = 15,
                                             mito_yes_no = "no")
 combined_de_no_interaction_plots$all <- plot_extreme_degs(diff_exprs_list = combined_de_no_interaction,
+                                               n_degs_to_plot = 15,
+                                               mito_yes_no = "no")
+combined_de_no_interaction_plots <- plot_extreme_degs(diff_exprs_list = combined_de_only_interaction,
                                                n_degs_to_plot = 15,
                                                mito_yes_no = "no")
 tcga_de_plots$all <- plot_extreme_degs(diff_exprs_list = tcga_de,
@@ -217,12 +223,15 @@ gtex_de_plots$all <- plot_extreme_degs(diff_exprs_list = gtex_de ,
 
 
 # Call the function for DEG files for each dataset only for mitochondrial genes
-combined_de_interaction_plots$mito <- plot_extreme_degs(diff_exprs_list = combined_de_with_interaction,
+combined_de_with_interaction_plots$mito <- plot_extreme_degs(diff_exprs_list = combined_de_with_interaction,
                                             n_degs_to_plot = 15,
                                             mito_yes_no = "yes")
 combined_de_no_interaction_plots$mito <- plot_extreme_degs(diff_exprs_list = combined_de_no_interaction,
                                                n_degs_to_plot = 15,
                                                mito_yes_no = "yes")
+combined_de_no_interaction_plots$mito <- plot_extreme_degs(diff_exprs_list = combined_de_only_interaction,
+                                               n_degs_to_plot = 15,
+                                               mito_yes_no = "no")
 tcga_de_plots$mito <- plot_extreme_degs(diff_exprs_list = tcga_de,
                                       n_degs_to_plot = 15,
                                       mito_yes_no = "yes")
@@ -232,42 +241,48 @@ gtex_de_plots$mito <- plot_extreme_degs(diff_exprs_list = gtex_de ,
 
 
 # View boxplots
-combined_de_interaction_plots$all$plots$p2_box_gene_cancer
+combined_de_with_interaction_plots$all$plots$p2_box_gene_cancer
 combined_de_no_interaction_plots$all$plots$p2_box_gene_cancer
+combined_de_only_interaction_plots$all$plots$p2_box_gene_cancer
 gtex_de_plots$all$plots$p2_box_gene_cancer
 tcga_de_plots$all$plots$p2_box_gene_cancer
 
-combined_de_interaction_plots$mito$plots$p2_box_gene_cancer
+combined_de_with_interaction_plots$mito$plots$p2_box_gene_cancer
 combined_de_no_interaction_plots$mito$plots$p2_box_gene_cancer
+combined_de_only_interaction_plots$mito$plots$p2_box_gene_cancer
 gtex_de_plots$mito$plots$p2_box_gene_cancer
 tcga_de_plots$mito$plots$p2_box_gene_cancer
 
 ```
 
-## Coefficients of different datasets and models
+## Visualize Coefficients, LFC, and CPMs of the different datasets and linear models
 
 ```{r coef, eval=TRUE}
 
 # Visualize coefficients
-
-
-
-
 hist(gtex_de$lrt$coefficients)
 hist(tcga_de$lrt$coefficients)
 hist(combined_de_no_interaction$lrt$coefficients)
+hist(combined_de_only_interaction$lrt$coefficients)
 hist(combined_de_with_interaction$lrt$coefficients)
 
-```
 
-##
-
-```{r lfc, eval=TRUE}
-
+# Visualize Log Fold Change values
 hist(gtex_de$topGenes$table$logFC)
 hist(tcga_de$topGenes$table$logFC)
 hist(combined_de_no_interaction$topGenes$table$logFC)
+hist(combined_de_only_interaction$topGenes$table$logFC)
 hist(combined_de_with_interaction$topGenes$table$logFC)
 
+
+# Visualize Log Counts per Million
+hist(gtex_de$topGenes$table$logCPM)
+hist(tcga_de$topGenes$table$logCPM)
+hist(combined_de_no_interaction$topGenes$table$logCPM)
+hist(combined_de_only_interaction$topGenes$table$logCPM)
+hist(combined_de_with_interaction$topGenes$table$logCPM)
+
 ```
+
+
 

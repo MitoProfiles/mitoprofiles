@@ -19,19 +19,19 @@ library(gprofiler2)
 
 ## Load Differential Expression analyses results 
 
-```{r load_data, eval=FALSE, warning=FALSE}
+```{r load_data, eval=FALSE}
 
 # Load data
 gtex_de <- readRDS(here("data/analysis/gtex_de.RDS"))
 tcga_de <- readRDS(here("data/analysis/tcga_de.RDS"))
-combined_de <- readRDS(here("data/analysis/combined_de_with_interaction.RDS"))
+combined_de_with_interaction <- readRDS(here("data/analysis/combined_de_with_interaction.RDS"))
 
 
 ```
 
 ## Functional enrichment analysis | GTEx
 
-```{r gtex_func_enrich, eval=TRUE, warning=FALSE}
+```{r gtex_func_enrich, eval=TRUE}
 
 #  Create a list to hold the functional enrichment objects
 gtex_fun <- list()
@@ -69,7 +69,7 @@ cat("Finished the GTEx functional enrichment analysis.")
 
 ## Functional enrichment analysis | TCGA
 
-```{r tcga_func_enrich, eval=TRUE, warning=FALSE}
+```{r tcga_func_enrich, eval=TRUE}
 
 #  Create a list to hold the functional enrichment objects
 tcga_fun <- list()
@@ -105,34 +105,34 @@ cat("Finished the TCGA functional enrichment analysis.")
 
 ## Functional enrichment analysis | Combined GTEx TCGA
 
-```{r combined_func_enrich, eval=TRUE, warning=FALSE}
+```{r combined_func_enrich, eval=TRUE}
 
 #  Create a list to hold the functional enrichment objects
-combined_fun <- list()
+combined_with_inter_fun <- list()
 
 # Get Entrez Gene identifiers (required by edgeR functions)
-rownames(combined_de$lrt) %>%
-  gsub('\\.\\d+', '', .) -> combined_fun$ensembl_ids
+rownames(combined_de_with_interaction$lrt) %>%
+  gsub('\\.\\d+', '', .) -> combined_with_inter_fun$ensembl_ids
 
 # Convert Ensembl IDs to Entrez Gene IDs
-combined_fun$entrez_ids <- mapIds(org.Hs.eg.db, 
-                              keys = combined_fun$ensembl_ids, 
+combined_with_inter_fun$entrez_ids <- mapIds(org.Hs.eg.db, 
+                              keys = combined_with_inter_fun$ensembl_ids, 
                               column = "ENTREZID", 
                               keytype = "ENSEMBL",
                               multiVals = "first")
 
 # GO analysis
-combined_fun$go <- edgeR::goana.DGELRT(combined_de$lrt, 
-                                   geneid = combined_fun$entrez_ids,
+combined_with_inter_fun$go <- edgeR::goana.DGELRT(combined_de_with_interaction$lrt, 
+                                   geneid = combined_with_inter_fun$entrez_ids,
                                    species = "Hs")
-combined_fun$top_go <- topGO(combined_fun$go, sort="up", p.value = 0.05)
+combined_with_inter_fun$top_go <- topGO(combined_with_inter_fun$go, sort="up", p.value = 0.05)
 
 
 # KEGG analysis
-combined_fun$kegg <- edgeR::kegga.DGELRT(combined_de$lrt, 
-                                     geneid = combined_fun$entrez_ids,
+combined_with_inter_fun$kegg <- edgeR::kegga.DGELRT(combined_de_with_interaction$lrt, 
+                                     geneid = combined_with_inter_fun$entrez_ids,
                                      species = "Hs")
-combined_fun$top_kegg <- topKEGG(combined_fun$kegg, sort="up", p.value = 0.05)
+combined_with_inter_fun$top_kegg <- topKEGG(combined_with_inter_fun$kegg, sort="up", p.value = 0.05)
 
 # Print a sentence confirming that this chunk finished computing
 cat("Finished the Combined GTEx TCGA functional enrichment analysis.")
@@ -142,7 +142,7 @@ cat("Finished the Combined GTEx TCGA functional enrichment analysis.")
 
 ## Functional enrichment | Using gprofiler2
 
-```{r funct_enrich_gprofiler, eval=TRUE, warning=FALSE}
+```{r funct_enrich_gprofiler, eval=TRUE}
 #
 ##
 ### GTEx | Perform functional enrichment analysis
@@ -188,8 +188,8 @@ cat("Finished the gprofiler TCGA functional enrichment analysis.")
 ### Combined GTEx TCGA | Perform functional enrichment analysis
 ##
 #
-combined_fun$gprofiler <- gprofiler2::gost(
-  query = gsub('\\.\\d+', '', rownames(combined_de$topGenes$table)[1:500]),
+combined_with_inter_fun$gprofiler <- gprofiler2::gost(
+  query = gsub('\\.\\d+', '', rownames(combined_de_with_interaction$topGenes$table)[1:500]),
   organism = "hsapiens",
   ordered_query = FALSE,
   user_threshold = 0.05,
@@ -198,7 +198,7 @@ combined_fun$gprofiler <- gprofiler2::gost(
 )
 
 # Plot the results
-gprofiler2::gostplot(combined_fun$gprofiler)
+gprofiler2::gostplot(combined_with_inter_fun$gprofiler)
 
 
 # Print a sentence confirming that this chunk finished computing
@@ -208,7 +208,7 @@ cat("Finished the gprofiler Combined functional enrichment analysis.")
 
 ## Save the functional enrichment results
 
-```{r save_fun_results, eval=TRUE, warning=FALSE}
+```{r save_fun_results, eval=TRUE}
 
 # Save the gtex functional analysis results
 saveRDS(gtex_fun, file = here("data/analysis/gtex_fun.RDS"))
@@ -217,7 +217,7 @@ saveRDS(gtex_fun, file = here("data/analysis/gtex_fun.RDS"))
 saveRDS(tcga_fun, file = here("data/analysis/tcga_fun.RDS"))
 
 # Save the gtex functional analysis results
-saveRDS(combined_fun, file = here("data/analysis/combined_fun.RDS"))
+saveRDS(combined_with_inter_fun, file = here("data/analysis/combined_with_inter_fun.RDS"))
 
 # Print a sentence confirming that this chunk finished computing
 cat("Finished saving to file the functional enrichment analysis results.")
