@@ -11,12 +11,13 @@ knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = TRUE)
 library(here)
 library(tidyverse)
 library(mitocarta)
+library(patchwork)
 
 ```
 
 ## Function to plot the most extreme DEGs
 
-```{r boxplot_funct}
+```{r boxplot_funct, eval=FALSE}
 
 ## Function to plot the counts for extreme LFC differentially expressed genes
 
@@ -180,8 +181,7 @@ plot_extreme_degs <- function (diff_exprs_list,
 
 ## Boxplots of the most extreme DEGs | All genes & Mitochondrial genes 
 
-```{r boxplots, dependson="degs_plot_function"}
-
+```{r boxplots, dependson="degs_plot_function", eval=FALSE}
 #
 ##
 ### Boxplots
@@ -238,9 +238,14 @@ tcga_de_plots$mito <- plot_extreme_degs(diff_exprs_list = tcga_de,
 gtex_de_plots$mito <- plot_extreme_degs(diff_exprs_list = gtex_de ,
                                       n_degs_to_plot = 15,
                                       mito_yes_no = "yes")
+```
 
+## View the plots
 
-# View boxplots
+```{r view_boxplots, dependson="boxplots", eval=TRUE}
+
+# Boxplots
+
 combined_de_with_interaction_plots$all$plots$p2_box_gene_cancer
 combined_de_no_interaction_plots$all$plots$p2_box_gene_cancer
 combined_de_only_interaction_plots$all$plots$p2_box_gene_cancer
@@ -257,30 +262,110 @@ tcga_de_plots$mito$plots$p2_box_gene_cancer
 
 ## Visualize Coefficients, LFC, and CPMs of the different datasets and linear models
 
-```{r coef, eval=TRUE}
+```{r coef, dependson="boxplots", eval=TRUE}
 
-# Visualize coefficients
-hist(gtex_de$lrt$coefficients)
-hist(tcga_de$lrt$coefficients)
-hist(combined_de_no_interaction$lrt$coefficients)
-hist(combined_de_only_interaction$lrt$coefficients)
-hist(combined_de_with_interaction$lrt$coefficients)
+#
+##
+### Coefficients | Merge data to compare
+##
+#
 
+# Create list
+lrt_df <- list()
+
+# Get coefficients in data frame format and change the column names to include the dataset name (except the gene_id column)
+lrt_df$coef_gtex <- data.frame(gene_id = rownames(gtex_de$lrt$coefficients), gtex_de$lrt$coefficients, row.names = NULL)
+colnames (lrt_df$coef_gtex)[-1] <- paste0(colnames(lrt_df$coef_gtex)[-1], "_gtex")
+
+lrt_df$coef_tcga <- data.frame(gene_id = rownames(tcga_de$lrt$coefficients), tcga_de$lrt$coefficients, row.names = NULL)
+colnames (lrt_df$coef_tcga)[-1] <- paste0(colnames(lrt_df$coef_tcga)[-1], "_tcga")
+
+lrt_df$coef_combined_no_interaction <- data.frame(gene_id = rownames(combined_de_no_interaction$lrt$coefficients), combined_de_no_interaction$lrt$coefficients, row.names = NULL)
+colnames (lrt_df$coef_combined_no_interaction)[-1] <- paste0(colnames(lrt_df$coef_combined_no_interaction)[-1], "_comb_NO")
+
+lrt_df$coef_combined_only_interaction <- data.frame(gene_id = rownames(combined_de_only_interaction$lrt$coefficients), combined_de_only_interaction$lrt$coefficients, row.names = NULL)
+colnames (lrt_df$coef_combined_only_interaction)[-1] <- paste0(colnames(lrt_df$coef_combined_only_interaction)[-1], "_comb_ONLY")
+
+lrt_df$coef_combined_with_interaction <- data.frame(gene_id = rownames(combined_de_with_interaction$lrt$coefficients), combined_de_with_interaction$lrt$coefficients, row.names = NULL)
+colnames (lrt_df$coef_combined_with_interaction)[-1] <- paste0(colnames(lrt_df$coef_combined_with_interaction)[-1], "_comb_WITH")
+
+
+# Merge all dataframes for common gene ids
+lrt_df$coef_merged <- Reduce(function(x,y) inner_join (x,y, by="gene_id"), lrt_df)
+
+
+# Pivot the dataframe to allow drawing boxplots
+lrt_df$coef_merged_long <- lrt_df$coef_merged %>%
+  pivot_longer(cols = !gene_id,
+               cols_vary = "slowest",
+               names_to = "coeff_name",
+               values_to = "coeff_value") %>%
+  mutate(coeff_name = factor(coeff_name,
+                                levels = colnames(lrt_df$coef_merged)[-1]))
+
+
+# Boxplots | View the distributions of all coefficients (using only common genes)
+lrt_df$coef_merged_long %>%
+  ggplot(aes(x=coeff_name, y=coeff_value, fill=coeff_name)) +
+  geom_boxplot(show.legend = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+# Histograms
+lrt_df$coef_merged_long %>%
+  group_by(coeff_name) %>%
+  ggplot(aes(x=coeff_value, fill=coeff_name)) +
+  geom_histogram(show.legend = FALSE) +
+  facet_wrap(vars(coeff_name))
+
+
+#######################################
+#### HERE | Code under development #### 
+#######################################
 
 # Visualize Log Fold Change values
-hist(gtex_de$topGenes$table$logFC)
-hist(tcga_de$topGenes$table$logFC)
-hist(combined_de_no_interaction$topGenes$table$logFC)
-hist(combined_de_only_interaction$topGenes$table$logFC)
-hist(combined_de_with_interaction$topGenes$table$logFC)
+par(mfrow=c(3,2))
+
+hist(gtex_de$topGenes$table$logFC,
+     main = "GTEx | (~ 0 + metabolic_rate) Log FC",
+     xlab = "Log Fold Change")
+hist(tcga_de$topGenes$table$logFC,
+     main = "TCGA | (~ 0 + metabolic_rate) Log FC",
+     xlab = "Log Fold Change")
+hist(
+  combined_de_no_interaction$topGenes$table$logFC,
+  main = "Combined NO interaction | (~ 0 + MR + CS) Log FC",
+  xlab = "Log Fold Change")
+hist(
+  combined_de_only_interaction$topGenes$table$logFC,
+  main = "Combined ONLY interaction | (~ 0 + MR : CS) Log FC",
+  xlab = "Log Fold Change")
+hist(
+  combined_de_with_interaction$topGenes$table$logFC,
+  main = "Combined WITH interaction | (~ 0 + MR + CS + MR : CS) Log FC",
+  xlab = "Log Fold Change")
 
 
 # Visualize Log Counts per Million
-hist(gtex_de$topGenes$table$logCPM)
-hist(tcga_de$topGenes$table$logCPM)
-hist(combined_de_no_interaction$topGenes$table$logCPM)
-hist(combined_de_only_interaction$topGenes$table$logCPM)
-hist(combined_de_with_interaction$topGenes$table$logCPM)
+par(mfrow=c(3,2))
+
+hist(gtex_de$topGenes$table$logCPM,
+     main = "GTEx | (~ 0 + metabolic_rate) Log CPM",
+     xlab = "Log Counts per Million")
+hist(tcga_de$topGenes$table$logCPM,
+     main = "TCGA | (~ 0 + metabolic_rate) Log CPM",
+     xlab = "Log Counts per Million")
+hist(
+  combined_de_no_interaction$topGenes$table$logCPM,
+  main = "Combined NO interaction | (~ 0 + MR + CS) Log CPM",
+  xlab = "Log Counts per Million")
+hist(
+  combined_de_only_interaction$topGenes$table$logCPM,
+  main = "Combined ONLY interaction | (~ 0 + MR : CS) Log CPM",
+  xlab = "Log Counts per Million")
+hist(
+  combined_de_with_interaction$topGenes$table$logCPM,
+  main = "Combined WITH interaction | (~ 0 + MR + CS + MR : CS) Log CPM",
+  xlab = "Log Counts per Million")
 
 ```
 
