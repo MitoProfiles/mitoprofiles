@@ -17,7 +17,7 @@ library(patchwork)
 
 ## Function to plot the most extreme DEGs
 
-```{r boxplot_funct, eval=FALSE}
+```{r boxplot_funct, eval=TRUE}
 
 ## Function to plot the counts for extreme LFC differentially expressed genes
 
@@ -181,7 +181,7 @@ plot_extreme_degs <- function (diff_exprs_list,
 
 ## Boxplots of the most extreme DEGs | All genes & Mitochondrial genes 
 
-```{r boxplots, dependson="degs_plot_function", eval=FALSE}
+```{r boxplots, dependson="degs_plot_function", eval=TRUE}
 #
 ##
 ### Boxplots
@@ -205,39 +205,49 @@ combined_de_with_interaction_plots <- list()
 
 
 # Call the function for DEG files for each dataset
-combined_de_with_interaction_plots$all <- plot_extreme_degs(diff_exprs_list = combined_de_with_interaction,
-                                            n_degs_to_plot = 15,
-                                            mito_yes_no = "no")
-combined_de_no_interaction_plots$all <- plot_extreme_degs(diff_exprs_list = combined_de_no_interaction,
-                                               n_degs_to_plot = 15,
-                                               mito_yes_no = "no")
-combined_de_no_interaction_plots <- plot_extreme_degs(diff_exprs_list = combined_de_only_interaction,
-                                               n_degs_to_plot = 15,
-                                               mito_yes_no = "no")
-tcga_de_plots$all <- plot_extreme_degs(diff_exprs_list = tcga_de,
-                                      n_degs_to_plot = 15,
-                                      mito_yes_no = "no")
-gtex_de_plots$all <- plot_extreme_degs(diff_exprs_list = gtex_de ,
-                                      n_degs_to_plot = 15,
-                                      mito_yes_no = "no")
-
+gtex_de_plots$all <- 
+  plot_extreme_degs(diff_exprs_list = gtex_de ,
+                    n_degs_to_plot = 10,
+                    mito_yes_no = "no")
+tcga_de_plots$all <- 
+  plot_extreme_degs(diff_exprs_list = tcga_de,
+                    n_degs_to_plot = 10,
+                    mito_yes_no = "no")
+combined_de_no_interaction_plots$all <- 
+  plot_extreme_degs(diff_exprs_list = combined_de_no_interaction,
+                    n_degs_to_plot = 10,
+                    mito_yes_no = "no")
+combined_de_only_interaction_plots <- 
+  plot_extreme_degs(diff_exprs_list = combined_de_only_interaction,
+                    n_degs_to_plot = 10,
+                    mito_yes_no = "no")
+combined_de_with_interaction_plots$all <- 
+  plot_extreme_degs(diff_exprs_list = combined_de_with_interaction,
+                    n_degs_to_plot = 10,
+                    mito_yes_no = "no")
 
 # Call the function for DEG files for each dataset only for mitochondrial genes
-combined_de_with_interaction_plots$mito <- plot_extreme_degs(diff_exprs_list = combined_de_with_interaction,
-                                            n_degs_to_plot = 15,
-                                            mito_yes_no = "yes")
-combined_de_no_interaction_plots$mito <- plot_extreme_degs(diff_exprs_list = combined_de_no_interaction,
-                                               n_degs_to_plot = 15,
-                                               mito_yes_no = "yes")
-combined_de_no_interaction_plots$mito <- plot_extreme_degs(diff_exprs_list = combined_de_only_interaction,
-                                               n_degs_to_plot = 15,
-                                               mito_yes_no = "no")
-tcga_de_plots$mito <- plot_extreme_degs(diff_exprs_list = tcga_de,
-                                      n_degs_to_plot = 15,
-                                      mito_yes_no = "yes")
-gtex_de_plots$mito <- plot_extreme_degs(diff_exprs_list = gtex_de ,
-                                      n_degs_to_plot = 15,
-                                      mito_yes_no = "yes")
+gtex_de_plots$mito <- 
+  plot_extreme_degs(diff_exprs_list = gtex_de ,
+                    n_degs_to_plot = 10,
+                    mito_yes_no = "yes")
+tcga_de_plots$mito <- 
+  plot_extreme_degs(diff_exprs_list = tcga_de,
+                    n_degs_to_plot = 10,
+                    mito_yes_no = "yes")
+combined_de_no_interaction_plots$mito <- 
+  plot_extreme_degs(diff_exprs_list = combined_de_no_interaction,
+                    n_degs_to_plot = 10,
+                    mito_yes_no = "yes")
+combined_de_only_interaction_plots$mito <- 
+  plot_extreme_degs(diff_exprs_list = combined_de_only_interaction,
+                    n_degs_to_plot = 10,
+                    mito_yes_no = "no")
+combined_de_with_interaction_plots$mito <- 
+  plot_extreme_degs(diff_exprs_list = combined_de_with_interaction,
+                    n_degs_to_plot = 10,
+                    mito_yes_no = "yes")
+
 ```
 
 ## View the plots
@@ -245,25 +255,23 @@ gtex_de_plots$mito <- plot_extreme_degs(diff_exprs_list = gtex_de ,
 ```{r view_boxplots, dependson="boxplots", eval=TRUE}
 
 # Boxplots
-
-combined_de_with_interaction_plots$all$plots$p2_box_gene_cancer
-combined_de_no_interaction_plots$all$plots$p2_box_gene_cancer
-combined_de_only_interaction_plots$all$plots$p2_box_gene_cancer
 gtex_de_plots$all$plots$p2_box_gene_cancer
 tcga_de_plots$all$plots$p2_box_gene_cancer
+combined_de_no_interaction_plots$all$plots$p2_box_gene_cancer
+combined_de_only_interaction_plots$all$plots$p2_box_gene_cancer
+combined_de_with_interaction_plots$all$plots$p2_box_gene_cancer
 
-combined_de_with_interaction_plots$mito$plots$p2_box_gene_cancer
-combined_de_no_interaction_plots$mito$plots$p2_box_gene_cancer
-combined_de_only_interaction_plots$mito$plots$p2_box_gene_cancer
 gtex_de_plots$mito$plots$p2_box_gene_cancer
 tcga_de_plots$mito$plots$p2_box_gene_cancer
+combined_de_no_interaction_plots$mito$plots$p2_box_gene_cancer
+combined_de_only_interaction_plots$mito$plots$p2_box_gene_cancer
+combined_de_with_interaction_plots$mito$plots$p2_box_gene_cancer
 
 ```
 
-## Visualize Coefficients, LFC, and CPMs of the different datasets and linear models
+## Visualize Coefficients of the different datasets and linear models
 
 ```{r coef, dependson="boxplots", eval=TRUE}
-
 #
 ##
 ### Coefficients | Merge data to compare
@@ -271,101 +279,175 @@ tcga_de_plots$mito$plots$p2_box_gene_cancer
 #
 
 # Create list
-lrt_df <- list()
+lrt_coef_df <- list()
 
 # Get coefficients in data frame format and change the column names to include the dataset name (except the gene_id column)
-lrt_df$coef_gtex <- data.frame(gene_id = rownames(gtex_de$lrt$coefficients), gtex_de$lrt$coefficients, row.names = NULL)
-colnames (lrt_df$coef_gtex)[-1] <- paste0(colnames(lrt_df$coef_gtex)[-1], "_gtex")
+lrt_coef_df$gtex <- data.frame(gene_id = rownames(gtex_de$lrt$coefficients), gtex_de$lrt$coefficients, row.names = NULL)
+colnames (lrt_coef_df$gtex)[-1] <- paste0(colnames(lrt_coef_df$gtex)[-1], "_gtex")
 
-lrt_df$coef_tcga <- data.frame(gene_id = rownames(tcga_de$lrt$coefficients), tcga_de$lrt$coefficients, row.names = NULL)
-colnames (lrt_df$coef_tcga)[-1] <- paste0(colnames(lrt_df$coef_tcga)[-1], "_tcga")
+lrt_coef_df$tcga <- data.frame(gene_id = rownames(tcga_de$lrt$coefficients), tcga_de$lrt$coefficients, row.names = NULL)
+colnames (lrt_coef_df$tcga)[-1] <- paste0(colnames(lrt_coef_df$tcga)[-1], "_tcga")
 
-lrt_df$coef_combined_no_interaction <- data.frame(gene_id = rownames(combined_de_no_interaction$lrt$coefficients), combined_de_no_interaction$lrt$coefficients, row.names = NULL)
-colnames (lrt_df$coef_combined_no_interaction)[-1] <- paste0(colnames(lrt_df$coef_combined_no_interaction)[-1], "_comb_NO")
+lrt_coef_df$combined_no_interaction <- data.frame(gene_id = rownames(combined_de_no_interaction$lrt$coefficients), combined_de_no_interaction$lrt$coefficients, row.names = NULL)
+colnames (lrt_coef_df$combined_no_interaction)[-1] <- paste0(colnames(lrt_coef_df$combined_no_interaction)[-1], "_comb_NO")
 
-lrt_df$coef_combined_only_interaction <- data.frame(gene_id = rownames(combined_de_only_interaction$lrt$coefficients), combined_de_only_interaction$lrt$coefficients, row.names = NULL)
-colnames (lrt_df$coef_combined_only_interaction)[-1] <- paste0(colnames(lrt_df$coef_combined_only_interaction)[-1], "_comb_ONLY")
+lrt_coef_df$combined_only_interaction <- data.frame(gene_id = rownames(combined_de_only_interaction$lrt$coefficients), combined_de_only_interaction$lrt$coefficients, row.names = NULL)
+colnames (lrt_coef_df$combined_only_interaction)[-1] <- paste0(colnames(lrt_coef_df$combined_only_interaction)[-1], "_comb_ONLY")
 
-lrt_df$coef_combined_with_interaction <- data.frame(gene_id = rownames(combined_de_with_interaction$lrt$coefficients), combined_de_with_interaction$lrt$coefficients, row.names = NULL)
-colnames (lrt_df$coef_combined_with_interaction)[-1] <- paste0(colnames(lrt_df$coef_combined_with_interaction)[-1], "_comb_WITH")
-
-
-# Merge all dataframes for common gene ids
-lrt_df$coef_merged <- Reduce(function(x,y) inner_join (x,y, by="gene_id"), lrt_df)
+lrt_coef_df$combined_with_interaction <- data.frame(gene_id = rownames(combined_de_with_interaction$lrt$coefficients), combined_de_with_interaction$lrt$coefficients, row.names = NULL)
+colnames (lrt_coef_df$combined_with_interaction)[-1] <- paste0(colnames(lrt_coef_df$combined_with_interaction)[-1], "_comb_WITH")
 
 
-# Pivot the dataframe to allow drawing boxplots
-lrt_df$coef_merged_long <- lrt_df$coef_merged %>%
+# Merge all dataframes by common gene ids
+lrt_coef_df$merged <- Reduce(function(x,y) inner_join (x,y, by="gene_id"), lrt_coef_df)
+
+
+# Pivot the dataframe to make the table tidy
+lrt_coef_df$merged_long <- lrt_coef_df$merged %>%
   pivot_longer(cols = !gene_id,
                cols_vary = "slowest",
                names_to = "coeff_name",
                values_to = "coeff_value") %>%
   mutate(coeff_name = factor(coeff_name,
-                                levels = colnames(lrt_df$coef_merged)[-1]))
+                                levels = colnames(lrt_coef_df$merged)[-1]))
 
+### Plotting
 
 # Boxplots | View the distributions of all coefficients (using only common genes)
-lrt_df$coef_merged_long %>%
+lrt_coef_df$merged_long %>%
   ggplot(aes(x=coeff_name, y=coeff_value, fill=coeff_name)) +
   geom_boxplot(show.legend = FALSE) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 # Histograms
-lrt_df$coef_merged_long %>%
+lrt_coef_df$merged_long %>%
   group_by(coeff_name) %>%
   ggplot(aes(x=coeff_value, fill=coeff_name)) +
   geom_histogram(show.legend = FALSE) +
   facet_wrap(vars(coeff_name))
+
+```
+
+## Visualize LFC and CPMs of the different datasets and linear models
+
+```{r top_genes, dependson="boxplots", eval=TRUE}
+
+#
+##
+### Top genes | Merge data to compare
+##
+#
+
+# Create list
+top_genes_df <- list()
+
+# Get top genes table and change the column names to include the dataset name (except the gene_id column)
+top_genes_df$gtex <- 
+  data.frame(gene_id = rownames(gtex_de$topGenes$table), gtex_de$topGenes$table, row.names = NULL)
+colnames (top_genes_df$gtex)[-1] <- paste0(colnames(top_genes_df$gtex)[-1], "_gtex")
+
+top_genes_df$tcga <- 
+  data.frame(gene_id = rownames(tcga_de$topGenes$table), tcga_de$topGenes$table, row.names = NULL)
+colnames (top_genes_df$tcga)[-1] <- paste0(colnames(top_genes_df$tcga)[-1], "_tcga")
+
+top_genes_df$combined_no_interaction <- 
+  data.frame(gene_id = rownames(combined_de_no_interaction$topGenes$table), combined_de_no_interaction$topGenes$table, row.names = NULL)
+colnames (top_genes_df$combined_no_interaction)[-1] <- paste0(colnames(top_genes_df$combined_no_interaction)[-1], "_comb_NO")
+
+top_genes_df$combined_only_interaction <- 
+  data.frame(gene_id = rownames(combined_de_only_interaction$topGenes$table), combined_de_only_interaction$topGenes$table, row.names = NULL)
+colnames (top_genes_df$combined_only_interaction)[-1] <- paste0(colnames(top_genes_df$combined_only_interaction)[-1], "_comb_ONLY")
+
+top_genes_df$combined_with_interaction <- 
+  data.frame(gene_id = rownames(combined_de_with_interaction$topGenes$table), combined_de_with_interaction$topGenes$table, row.names = NULL)
+colnames (top_genes_df$combined_with_interaction)[-1] <- paste0(colnames(top_genes_df$combined_with_interaction)[-1], "_comb_WITH")
+
+
+# Merge all dataframes by common gene ids
+top_genes_df$merged <- Reduce(function(x,y) inner_join (x,y, by="gene_id"), top_genes_df)
+
+
+# Pivot LogFC and LogCPM data to make it tidy
+
+top_genes_df$logFC_long <-
+  top_genes_df$merged %>%
+  select(gene_id, contains("LogFC")) %>%
+  pivot_longer(cols = !gene_id, 
+               names_to = "dataset_model", 
+               values_to = "LogFC",
+               cols_vary = "fastest") %>%
+  mutate(dataset_model = factor(dataset_model,
+                                levels = c("logFC_gtex","logFC_tcga",
+                                           "logFC_comb_NO",
+                                           "logFC_comb_ONLY",
+                                           "logFC_comb_WITH") ) )
+  
+top_genes_df$logCPM_long <-
+  top_genes_df$merged %>%
+  select(gene_id, contains("LogCPM")) %>%
+  pivot_longer(cols = !gene_id, 
+               names_to = "dataset_model", 
+               values_to = "LogCPM",
+               cols_vary = "fastest") %>%
+  mutate(dataset_model = factor(dataset_model,
+                                levels = c("logCPM_gtex","logCPM_tcga",
+                                           "logCPM_comb_NO",
+                                           "logCPM_comb_ONLY",
+                                           "logCPM_comb_WITH") ) )
+
+top_genes_df$FDR_long <-
+  top_genes_df$merged %>%
+  select(gene_id, contains("FDR")) %>%
+  pivot_longer(cols = !gene_id, 
+               names_to = "dataset_model", 
+               values_to = "FDR",
+               cols_vary = "fastest") %>%
+  mutate(dataset_model = factor(dataset_model,
+                                levels = c("FDR_gtex","FDR_tcga",
+                                           "FDR_comb_NO",
+                                           "FDR_comb_ONLY",
+                                           "FDR_comb_WITH") ) )
+
+
+#### Plotting Log Fold Change
+
+# Boxplots | View the distributions of Log Fold Change values (using only common genes)
+top_genes_df$logFC_long %>%
+  ggplot(aes(x=dataset_model, y=LogFC, fill=dataset_model)) +
+  geom_boxplot(show.legend = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+# Histograms
+top_genes_df$logFC_long %>%
+  group_by(dataset_model) %>%
+  ggplot(aes(x=LogFC, fill=dataset_model)) +
+  geom_histogram(show.legend = FALSE) +
+  facet_wrap(vars(dataset_model))
+
+
+
+#### Plotting Log Counts per Million
+
+# Boxplots | View the distributions of Log CPM values (using only common genes)
+top_genes_df$logCPM_long %>%
+  ggplot(aes(x=dataset_model, y=LogCPM, fill=dataset_model)) +
+  geom_boxplot(show.legend = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+# Histograms
+top_genes_df$logCPM_long %>%
+  group_by(dataset_model) %>%
+  ggplot(aes(x=LogCPM, fill=dataset_model)) +
+  geom_histogram(show.legend = FALSE) +
+  facet_wrap(vars(dataset_model))
+
 
 
 #######################################
 #### HERE | Code under development #### 
 #######################################
 
-# Visualize Log Fold Change values
-par(mfrow=c(3,2))
 
-hist(gtex_de$topGenes$table$logFC,
-     main = "GTEx | (~ 0 + metabolic_rate) Log FC",
-     xlab = "Log Fold Change")
-hist(tcga_de$topGenes$table$logFC,
-     main = "TCGA | (~ 0 + metabolic_rate) Log FC",
-     xlab = "Log Fold Change")
-hist(
-  combined_de_no_interaction$topGenes$table$logFC,
-  main = "Combined NO interaction | (~ 0 + MR + CS) Log FC",
-  xlab = "Log Fold Change")
-hist(
-  combined_de_only_interaction$topGenes$table$logFC,
-  main = "Combined ONLY interaction | (~ 0 + MR : CS) Log FC",
-  xlab = "Log Fold Change")
-hist(
-  combined_de_with_interaction$topGenes$table$logFC,
-  main = "Combined WITH interaction | (~ 0 + MR + CS + MR : CS) Log FC",
-  xlab = "Log Fold Change")
-
-
-# Visualize Log Counts per Million
-par(mfrow=c(3,2))
-
-hist(gtex_de$topGenes$table$logCPM,
-     main = "GTEx | (~ 0 + metabolic_rate) Log CPM",
-     xlab = "Log Counts per Million")
-hist(tcga_de$topGenes$table$logCPM,
-     main = "TCGA | (~ 0 + metabolic_rate) Log CPM",
-     xlab = "Log Counts per Million")
-hist(
-  combined_de_no_interaction$topGenes$table$logCPM,
-  main = "Combined NO interaction | (~ 0 + MR + CS) Log CPM",
-  xlab = "Log Counts per Million")
-hist(
-  combined_de_only_interaction$topGenes$table$logCPM,
-  main = "Combined ONLY interaction | (~ 0 + MR : CS) Log CPM",
-  xlab = "Log Counts per Million")
-hist(
-  combined_de_with_interaction$topGenes$table$logCPM,
-  main = "Combined WITH interaction | (~ 0 + MR + CS + MR : CS) Log CPM",
-  xlab = "Log Counts per Million")
 
 ```
 
