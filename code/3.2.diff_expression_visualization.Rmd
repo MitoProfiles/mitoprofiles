@@ -1,0 +1,107 @@
+---
+title: "MitoSignatures"
+author: "Isabel Duarte"
+date: "2023-06-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache=FALSE, dev="png")
+
+library(here)
+library(tidyverse)
+library(patchwork)
+
+```
+
+```{r load_data}
+
+## Load the DE data
+lrt_coef_df_merged <- readRDS(file = here("data/analysis/lrt_coef_df_merged.RDS"))
+top_genes_df_merged <- readRDS(file = here("data/analysis/top_genes_df_merged.RDS"))
+
+```
+
+
+## Gene expression of Extreme DEGs 
+
+![](/data/iduarte/mitoprofiles/analysis_output/gtex_extreme_degs_boxplot.png)
+![](/data/iduarte/mitoprofiles/analysis_output/tcga_extreme_degs_boxplot.png)
+![](/data/iduarte/mitoprofiles/analysis_output/comb_NO_interac_extreme_degs_boxplot.png)
+![](/data/iduarte/mitoprofiles/analysis_output/comb_ONLY_interac_extreme_degs_boxplot.png)
+![](/data/iduarte/mitoprofiles/analysis_output/comb_WITH_interac_extreme_degs_boxplot.png)
+
+
+## Gene expression of Mitochondrial DEGs 
+
+![](/data/iduarte/mitoprofiles/analysis_output/gtex_mito_degs_boxplot.png)
+![](/data/iduarte/mitoprofiles/analysis_output/tcga_mito_degs_boxplot.png)
+![](/data/iduarte/mitoprofiles/analysis_output/comb_NO_interac_mito_degs_boxplot.png)
+![](/data/iduarte/mitoprofiles/analysis_output/comb_ONLY_interac_mito_degs_boxplot.png)
+![](/data/iduarte/mitoprofiles/analysis_output/comb_WITH_interac_mito_degs_boxplot.png)
+
+
+
+## Visualize Coefficients of the different datasets and linear models
+
+```{r coef}
+
+### Plotting
+
+# Boxplots | View the distributions of all coefficients (using only common genes)
+lrt_coef_df_merged$long %>%
+  ggplot(aes(x=coeff_name, y=coeff_value, fill=coeff_name)) +
+  geom_boxplot(show.legend = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+# Histograms
+lrt_coef_df_merged$long %>%
+  group_by(coeff_name) %>%
+  ggplot(aes(x=coeff_value, fill=coeff_name)) +
+  geom_histogram(show.legend = FALSE) +
+  facet_wrap(vars(coeff_name))
+
+```
+
+## Visualize LFC and CPMs of the different datasets and linear models
+
+```{r top_genes}
+
+
+#### Plotting Log Fold Change
+
+# Boxplots | View the distributions of Log Fold Change values (using only common genes)
+top_genes_df_merged$logFC_long %>%
+  ggplot(aes(x=dataset_model, y=LogFC, fill=dataset_model)) +
+  geom_boxplot(show.legend = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+# Histograms
+top_genes_df_merged$logFC_long %>%
+  group_by(dataset_model) %>%
+  ggplot(aes(x=LogFC, fill=dataset_model)) +
+  geom_histogram(show.legend = FALSE) +
+  facet_wrap(vars(dataset_model))
+
+
+#### Plotting Log Counts per Million
+
+# Boxplots | View the distributions of Log CPM values (using only common genes)
+top_genes_df_merged$logCPM_long %>%
+  ggplot(aes(x=dataset_model, y=LogCPM, fill=dataset_model)) +
+  geom_boxplot(show.legend = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+# Histograms
+top_genes_df_merged$logCPM_long %>%
+  group_by(dataset_model) %>%
+  ggplot(aes(x=LogCPM, fill=dataset_model)) +
+  geom_histogram(show.legend = FALSE) +
+  facet_wrap(vars(dataset_model))
+
+
+
+```
+
+
+
