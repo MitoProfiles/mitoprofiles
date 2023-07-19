@@ -314,7 +314,6 @@ saveRDS(combined_de_no_interaction, file = here("data/analysis/combined_de_no_in
 
 
 
-# NOTE - CODE AFTER THIS SECTION IS STILL UNDER DEVELOPMENT
 
 ## Differential expression | Combined TCGA and GTEx | Model ~ 0 + metabolic_rate:cancer_status
 

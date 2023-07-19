@@ -1,0 +1,62 @@
+---
+title: "MitoSignatures"
+author: "Catarina Ferreira & Isabel Duarte"
+date: "2023-07-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = TRUE)
+
+library(here)
+library(tidyverse)
+library(mitocarta)
+library(edgeR) 
+
+```
+
+
+```{r clustering}
+## Read the file with the diff expression data
+combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+
+## Filter the mitochondrial genes only
+mito_genes_index <- mitocarta_data$A_Human_MitoCarta3$EnsemblGeneID_mapping_version_20200130 %in%
+  gsub("\\..*$","",row.names(combined_de_with_interaction$dge_data_filtered))
+    
+mito_dge_data_filtered <- combined_de_with_interaction$dge_data_filtered[mito_genes_index, ]
+
+## Get the normalized CPM values for the mitochondrial genes
+dgelist_log2cpm <- cpm(mito_dge_data_filtered,
+                       normalized.lib.sizes = TRUE,
+                       log = TRUE, prior.count = 2)
+
+## Calculate the distance matrix - SLOW STEP - UNCOMMENT WHEN NEEDED
+# mito_dist_matrix <- dist(dgelist_log2cpm, method = "euclidean")
+
+## Save the distance matrix object
+# saveRDS(mito_dist_matrix, file = here("data/analysis/clustering_mito_distance_matrix.RDS"))
+
+## DIFFERENT TYPES OF HIERARCHICAL CLUSTERING
+## Single link
+hclust_min <- hclust(mito_dist_matrix, method = "single")
+
+## Complete link
+hclust_max <- hclust(mito_dist_matrix, method = "complete")
+
+## Group average
+hclust_group_av <- hclust(mito_dist_matrix, method = "average")
+
+## Visualize the dendrogram
+
+# plot(hclust_min, 
+#      cex=0.4,
+#      main = "Dendrogram of Hierarchical Clustering - Single linkage")
+plot(hclust_max, 
+     cex=0.4,
+     main = "Dendrogram of Hierarchical Clustering - Complete linkage")
+plot(hclust_group_av, 
+     cex=0.4,
+     main = "Dendrogram of Hierarchical Clustering - Group average")
+
+```
