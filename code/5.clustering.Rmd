@@ -6,24 +6,39 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = TRUE)
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = FALSE)
 
 library(here)
 library(tidyverse)
 library(mitocarta)
-library(edgeR) 
+library(edgeR)
+library(RColorBrewer)
+library(biclust)
+library(Mfuzz)
 
 ```
 
+## Load and Format data
 
-```{r clustering}
+```{r data}
+
 ## Read the file with the diff expression data
 combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
 
-## Filter the mitochondrial genes only
-mito_genes_index <- mitocarta_data$A_Human_MitoCarta3$EnsemblGeneID_mapping_version_20200130 %in%
-  gsub("\\..*$","",row.names(combined_de_with_interaction$dge_data_filtered))
-    
+
+# Mitocarta Gene IDs
+mitocarta_gene_ids <-
+  unlist(
+    strsplit(
+      mitocarta::mitocarta_data$A_Human_MitoCarta3$EnsemblGeneID_mapping_version_20200130,
+      "\\|"))
+
+## Get the index positions from the dgelist object that contain the mitochondrial genes 
+mito_genes_index <- gsub("\\..*$", "", 
+                         row.names(combined_de_with_interaction$dge_data_filtered)) %in% 
+  mitocarta_gene_ids
+
+## Get a new DGELIST object only with mitochondrial genes 
 mito_dge_data_filtered <- combined_de_with_interaction$dge_data_filtered[mito_genes_index, ]
 
 ## Get the normalized CPM values for the mitochondrial genes
@@ -31,11 +46,44 @@ dgelist_log2cpm <- cpm(mito_dge_data_filtered,
                        normalized.lib.sizes = TRUE,
                        log = TRUE, prior.count = 2)
 
+
+## Metadata | Create vector of colors for samples
+combined_de_with_interaction$data_clean$metadata %>%
+  filter(sample_id  %in% colnames(dgelist_log2cpm)) %>%
+  mutate(sample_type = paste(cancer_status, organ, sep = "_")) %>%
+  mutate(sample_col = case_when(sample_type == "cancer_bladder" ~ "tomato1",
+                                sample_type == "non_cancer_bladder" ~ "tomato3",
+                                sample_type == "cancer_skin" ~ "coral3",
+                                sample_type == "non_cancer_skin" ~ "coral",
+                                sample_type == "cancer_colon" ~ "green4",
+                                sample_type == "non_cancer_colon" ~ "limegreen",
+                                sample_type == "cancer_brain" ~ "deeppink",
+                                sample_type == "non_cancer_brain" ~ "deeppink3",
+                                sample_type == "cancer_liver" ~ "mediumpurple3",
+                                sample_type == "non_cancer_liver" ~ "mediumpurple1",
+                                sample_type == "cancer_kidney" ~ "darkgoldenrod1",
+                                sample_type == "non_cancer_kidney" ~ "darkgoldenrod3")) %>%
+  dplyr::arrange(organ, cancer_status) -> metadata_with_colors_ordered
+
+
+## Order the columns of the original expression matrix by sample type
+   ## (to keep all sample types together in the heatmap)
+ordered_dgelist_log2cpm <- dgelist_log2cpm[ , 
+                                           match(metadata_with_colors_ordered$sample_id,
+                                                 colnames(dgelist_log2cpm))
+                                           ]
+
+```
+
+## Hierarchical clustering
+
+```{r hierarchical_clustering}
+
 ## Calculate the distance matrix - SLOW STEP - UNCOMMENT WHEN NEEDED
-# mito_dist_matrix <- dist(dgelist_log2cpm, method = "euclidean")
+mito_dist_matrix <- dist(ordered_dgelist_log2cpm, method = "euclidean")
 
 ## Save the distance matrix object
-# saveRDS(mito_dist_matrix, file = here("data/analysis/clustering_mito_distance_matrix.RDS"))
+saveRDS(mito_dist_matrix, file = here("data/analysis/clustering_mito_distance_matrix.RDS"))
 
 ## DIFFERENT TYPES OF HIERARCHICAL CLUSTERING
 ## Single link
@@ -48,10 +96,9 @@ hclust_max <- hclust(mito_dist_matrix, method = "complete")
 hclust_group_av <- hclust(mito_dist_matrix, method = "average")
 
 ## Visualize the dendrogram
-
-# plot(hclust_min, 
-#      cex=0.4,
-#      main = "Dendrogram of Hierarchical Clustering - Single linkage")
+plot(hclust_min,
+     cex=0.4,
+     main = "Dendrogram of Hierarchical Clustering - Single linkage")
 plot(hclust_max, 
      cex=0.4,
      main = "Dendrogram of Hierarchical Clustering - Complete linkage")
@@ -59,4 +106,69 @@ plot(hclust_group_av,
      cex=0.4,
      main = "Dendrogram of Hierarchical Clustering - Group average")
 
+
+## Heatmaps
+heatmap(ordered_dgelist_log2cpm, 
+        Rowv = order(hclust_group_av$order), 
+        Colv = NA, 
+        scale = "none", 
+        symm = FALSE, 
+        cexRow=0.5, cexCol=0.3,
+        # col = cm.colors(256),
+        # col = terrain.colors(256),
+        # col = topo.colors(256),
+        # col = heat.colors(256),
+        col= colorRampPalette(brewer.pal(8, "Blues"))(25),
+        ColSideColors = metadata_with_colors_ordered$sample_col)
+
 ```
+
+## Biclustering
+
+```{r biclust}
+
+## Transpose the count matrix, as biclustering requires samples in rows and genes in columns
+count_matrix <- t(ordered_dgelist_log2cpm)
+
+## Perform biclustering using biclust
+## TO DO | Choose the method
+biclust_result <- biclust(count_matrix, method = BCCC())
+
+## Print the biclusters
+print(biclust_result)
+
+## Draw the heatmap
+drawHeatmap2(count_matrix, bicResult = biclust_result, 
+             number=5, 
+             plotAll = FALSE)
+
+```
+
+## Soft clustering | Fuzzy clustering
+
+```{r mfuzz}
+
+## Create an eset object using the expression data matrix
+eset_ordered_dgelist_log2cpm <- Biobase::ExpressionSet(assayData = as.matrix(ordered_dgelist_log2cpm))
+
+## Run fuzzy clustering algorithm, with 20 clusters, with 1.25 fuzzification parameter
+mfuzz_res <- mfuzz(eset_ordered_dgelist_log2cpm, c=20, m=1.25)
+
+## Plot clusters
+mfuzz.plot(eset_ordered_dgelist_log2cpm, cl = mfuzz_res, mfrow = c(2,2),
+           new.window = FALSE)
+
+mfuzz.plot2(eset_ordered_dgelist_log2cpm, cl = mfuzz_res, mfrow = c(2,2),
+           x11 = FALSE, colo = "fancy", col = "blue")
+
+## Get the genes for each cluster
+acore(eset_ordered_dgelist_log2cpm,
+      mfuzz_res, min.acore = 0.7)
+## Each individual clusters
+mfuzz_res$cluster[which(mfuzz_res$cluster == 20)]
+
+## Plot the overlap between clusters
+overlap.plot(mfuzz_res, overlap(mfuzz_res))
+
+```
+
