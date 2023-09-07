@@ -1,6 +1,6 @@
 ---
 title: "MitoSignatures"
-author: "Isabel Duarte"
+author: "Isabel Duarte & Catarina Gomes Ferreira"
 date: "2023-06-05"
 output: html_document
 ---
@@ -10,7 +10,6 @@ knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = TRUE)
 
 library(here)
 library(tidyverse)
-
 ```
 
 
@@ -107,22 +106,58 @@ genes_v26_not_36[order(genes_v26_not_36)]
 
 # Load data
 combined_pca_result <- readRDS(here("data/processed/combined_pca_result.RDS"))
+combined_metadata_tcga_gtex <- readRDS(here("data/processed/combined_metadata_tcga_gtex.RDS"))
 
 # Create a dataframe with PC scores, patient id, and study
 data.frame(PC1 = combined_pca_result$x[, 1],
            PC2 = combined_pca_result$x[, 2]) %>% 
-  rownames_to_column(var="patient_id") %>%
-  mutate(study = case_when(grepl("^TCGA", patient_id) ~ "TCGA",
-                           grepl("^GTEX", patient_id) ~ "GTEX",
+  rownames_to_column(var="sample_id") %>%
+  mutate(study = case_when(grepl("^TCGA", sample_id) ~ "TCGA",
+                           grepl("^GTEX", sample_id) ~ "GTEX",
                            TRUE ~ NA_character_)) -> pca_scores_df
 
+# Making left join of pca_results_df with combined_metadata_tcga_gtex through the column "sample_id"
+result_df <- left_join(pca_scores_df, combined_metadata_tcga_gtex, by = "sample_id")
+
+# Add the "organ" column to pca_scores_df
+new_pca_scores_df <- mutate(pca_scores_df, organ = result_df$organ)
+
+
 # Look at the results: PC1 vs PC2 scatter plot
-ggplot(pca_scores_df, aes(x = PC1, y = PC2, color=study)) +
+pca_plot_study <- ggplot(new_pca_scores_df, aes(x = PC1, y = PC2, color=study)) +
   geom_point(alpha=0.5) +
+  geom_text(data = filter(new_pca_scores_df, PC1>= 1e+07), aes(label = organ), vjust = 1.5, size = 3) +
   xlab("PC1") +
   ylab("PC2") +
   ggtitle("PCA Plot | Combined TCGA and GTEx data")
 
+print(pca_plot_study)
 
+# Look at the results: PC1 vs PC2 scatter plot
+pca_plot_organ <- ggplot(new_pca_scores_df, aes(x = PC1, y = PC2, color=organ)) +
+  geom_point(aes(shape = study), alpha=0.5, size = 2) +
+  geom_text(data = filter(new_pca_scores_df, PC1>= 1e+07), aes(label = organ), vjust = 1.5, size = 3) +
+  xlab("PC1") +
+  ylab("PC2") +
+  ggtitle("PCA Plot | Combined TCGA and GTEx data")
+
+print(pca_plot_organ)
+
+```
+
+
+```{r saving pca_analysis, warning=FALSE}
+
+## Saving pca plot
+ggsave(file=here("analysis_output/pca_plot_study.png"),
+    plot = pca_plot_study, 
+    device="png", width = 29.7, height = 21, units = "cm" 
+    )
+
+## Saving pca plot
+ggsave(file=here("analysis_output/pca_plot_organ.png"),
+    plot = pca_plot_organ, 
+    device="png", width = 29.7, height = 21, units = "cm" 
+    )
 ```
 
