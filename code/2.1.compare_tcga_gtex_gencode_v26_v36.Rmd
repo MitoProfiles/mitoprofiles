@@ -1,6 +1,6 @@
 ---
 title: "MitoSignatures"
-author: "Isabel Duarte & Catarina Gomes Ferreira"
+author: "Isabel Duarte"
 date: "2023-06-05"
 output: html_document
 ---
@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = TRUE)
 
 library(here)
 library(tidyverse)
+library(dplyr)
+library(biomaRt)
 ```
 
 
@@ -100,6 +102,82 @@ genes_v26_not_36[order(genes_v26_not_36)]
 
 ```
 
+
+# Creating a dataframe with all of the different genes for v36 showing their symbol and name
+
+```{r dataframe for genes_v36, warning=FALSE}
+
+ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+
+# Creating dataframe for genes_v36_not_26 with gene symbol and name
+gene_ids_v36 <- strsplit(genes_v36_not_26[order(genes_v36_not_26)], " ")
+
+ensembl_id_without_version_v36 <- sub("\\..*", "", gene_ids_v36)
+
+# Fetch gene symbols and gene names
+gene_info_v36 <- getBM(
+  attributes = c("ensembl_gene_id", "external_gene_name", "description"),
+  filters = "ensembl_gene_id",
+  values = ensembl_id_without_version_v36,
+  mart = ensembl
+)
+
+# Create a dataframe
+#### ITS REMOVING ONE OF THE GENES (SHOULD BE 52 NOT 51)
+gene_v36_dataframe <- data.frame(row.names = gene_info_v36$ensembl_gene_id, 
+                                 Symbol = gene_info_v36$external_gene_name,
+                                 Name = gene_info_v36$description)
+
+# Save the id not present in the biomart database
+ensembl_id_without_version_v36_missing <- ensembl_id_without_version_v36[!(ensembl_id_without_version_v36 %in% rownames(gene_v36_dataframe))]
+
+# View the dataframe
+print(gene_v36_dataframe)
+
+# Export the dataframe to a csv file
+write.csv(gene_v36_dataframe, here("analysis_output/gene_v36_dataframe.csv"), row.names=TRUE)
+
+```
+
+
+# Creating a dataframe with all of the different genes for v26 showing their symbol and name
+
+```{r dataframe for genes_v26, warning=FALSE}
+
+ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+
+# Creating dataframe for genes_v26_not_36 with gene symbol and name
+gene_ids_v26 <- strsplit(genes_v26_not_36[order(genes_v26_not_36)], " ")
+
+ensembl_id_without_version_v26 <- sub("\\..*", "", gene_ids_v26)
+
+# Fetch gene symbols and gene names
+gene_info_v26 <- getBM(
+  attributes = c("ensembl_gene_id", "external_gene_name", "description"),
+  filters = "ensembl_gene_id",
+  values = ensembl_id_without_version_v26,
+  mart = ensembl
+)
+
+# Create a dataframe
+gene_v26_dataframe <- data.frame(row.names = gene_info_v26$ensembl_gene_id, 
+                                 Symbol = gene_info_v26$external_gene_name,
+                                 Name = gene_info_v26$description)
+
+rownames(gene_v26_dataframe) <- gene_info_v26$ensembl_gene_id
+
+# Save the id not present in the biomart database
+ensembl_id_without_version_v26_missing <- ensembl_id_without_version_v26[!(ensembl_id_without_version_v26 %in% rownames(gene_v26_dataframe))] 
+
+# View the dataframe
+print(gene_v26_dataframe)
+
+# Export the dataframe to a csv file
+write.csv(gene_v26_dataframe, here("analysis_output/gene_v26_dataframe.csv"), row.names=TRUE)
+
+```
+
+
 ## PCA from TCGA GTEx combined counts
 
 ```{r pca_analysis, warning=FALSE}
@@ -122,13 +200,15 @@ result_df <- left_join(pca_scores_df, combined_metadata_tcga_gtex, by = "sample_
 # Add the "organ" column to pca_scores_df
 new_pca_scores_df <- mutate(pca_scores_df, organ = result_df$organ)
 
+# How to calculate the percentage of variance explained 
+variance_explained <- (combined_pca_result$sdev^2) / sum(combined_pca_result$sdev^2) * 100
 
 # Look at the results: PC1 vs PC2 scatter plot
 pca_plot_study <- ggplot(new_pca_scores_df, aes(x = PC1, y = PC2, color=study)) +
   geom_point(alpha=0.5) +
   geom_text(data = filter(new_pca_scores_df, PC1>= 1e+07), aes(label = organ), vjust = 1.5, size = 3) +
-  xlab("PC1") +
-  ylab("PC2") +
+  xlab("PC1 (78.054 %)") +
+  ylab("PC2 (7.268 %)") +
   ggtitle("PCA Plot | Combined TCGA and GTEx data")
 
 print(pca_plot_study)
@@ -137,8 +217,8 @@ print(pca_plot_study)
 pca_plot_organ <- ggplot(new_pca_scores_df, aes(x = PC1, y = PC2, color=organ)) +
   geom_point(aes(shape = study), alpha=0.5, size = 2) +
   geom_text(data = filter(new_pca_scores_df, PC1>= 1e+07), aes(label = organ), vjust = 1.5, size = 3) +
-  xlab("PC1") +
-  ylab("PC2") +
+  xlab("PC1 (78.054 %)") +
+  ylab("PC2 (7.268 %)") +
   ggtitle("PCA Plot | Combined TCGA and GTEx data")
 
 print(pca_plot_organ)
@@ -151,13 +231,12 @@ print(pca_plot_organ)
 ## Saving pca plot
 ggsave(file=here("analysis_output/pca_plot_study.png"),
     plot = pca_plot_study, 
-    device="png", width = 29.7, height = 21, units = "cm" 
+    device="png", width = 21.15, height = 15, units = "cm" 
     )
 
 ## Saving pca plot
 ggsave(file=here("analysis_output/pca_plot_organ.png"),
     plot = pca_plot_organ, 
-    device="png", width = 29.7, height = 21, units = "cm" 
+    device="png", width = 21.15, height = 15, units = "cm" 
     )
 ```
-

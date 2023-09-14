@@ -1,0 +1,97 @@
+---
+title: "dataframe_creations"
+author: "Catarina Ferreira"
+date: "2023-09-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = TRUE)
+
+library(here)
+library(tidyverse)
+library(biomaRt)
+```
+
+
+
+```{r upregulated table, warning=FALSE}
+
+combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+
+table_all_genes <- combined_de_with_interaction[["topGenes"]][["table"]]
+
+# Sort the DataFrame by logFC in descending order
+sorted_df_up <- table_all_genes[order(table_all_genes$logFC, decreasing = TRUE), ]
+
+# Extract the top 20 genes with the most positive logFC
+top20_upregulated <- sorted_df_up[1:20, ]
+
+# Fetching the ENSEMBLE id's
+upregulated_ids <- rownames(top20_upregulated)
+
+#ensembl_id_without_version_up <- sub("\\..*", "", upregulated_ids)
+
+## Fetch gene symbols and gene names
+gene_info_up <- getBM(
+  attributes = c("ensembl_gene_id_version", "external_gene_name", "description"),
+  filters = "ensembl_gene_id_version",
+  values = upregulated_ids,
+  mart = ensembl
+)
+
+# Creating table with the top 20 upregulated
+top20_upregulated %>%
+  rownames_to_column(var = "ensembl_gene_id_version") %>%
+  left_join(., gene_info_up, by = "ensembl_gene_id_version") -> upregulated_df
+
+
+# View the dataframe
+print(upregulated_df)
+
+# Export the dataframe to a csv file
+write.csv(upregulated_df, here("analysis_output/upregulated_df.csv"), row.names=FALSE)
+
+```
+
+
+
+```{r downregulated table, warning=FALSE}
+
+#combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+
+table_all_genes <- combined_de_with_interaction[["topGenes"]][["table"]]
+
+# Sort the DataFrame by logFC in ascending order
+sorted_df_down <- table_all_genes[order(table_all_genes$logFC, decreasing = FALSE), ]
+
+# Extract the top 20 genes with the most negative logFC
+top20_downregulated <- sorted_df_down[1:20, ]
+
+# Fetching the ENSEMBLE id's
+downregulated_ids <- rownames(top20_downregulated)
+
+ensembl_id_without_version_down <- sub("\\..*", "", downregulated_ids)
+
+# Fetch gene symbols and gene names
+gene_info_down <- getBM(
+  attributes = c("ensembl_gene_id_version", "external_gene_name", "description"),
+  filters = "ensembl_gene_id_version",
+  values = downregulated_ids,
+  mart = ensembl
+)
+
+# Creating table with the top 20 downregulated
+top20_downregulated %>%
+  rownames_to_column(var = "ensembl_gene_id_version") %>%
+  left_join(., gene_info_down, by = "ensembl_gene_id_version") -> downregulated_df
+
+
+# View the dataframe
+print(downregulated_df)
+
+# Export the dataframe to a csv file
+write.csv(downregulated_df, here("analysis_output/downregulated_df.csv"), row.names=FALSE)
+```
