@@ -52,7 +52,7 @@ volcano_plot_gtex_de <- ggplot(data= volcano_plot_table, aes(x=logFC, y=PValue, 
 print(volcano_plot_gtex_de)
 
 ## Saving volcano plot
-ggsave(file=here("analysis_output/volcano_plot_gtex_de.png"),
+ggsave(file=here("analysis_output/volcano_plots/volcano_plot_gtex_de.png"),
     plot = volcano_plot_gtex_de, 
     device="png", width = 21.15, height = 15, units = "cm" 
     )
@@ -94,7 +94,7 @@ volcano_plot_tcga_de <- ggplot(data= volcano_plot_table, aes(x=logFC, y=PValue, 
 print(volcano_plot_tcga_de)
 
 ## Saving volcano plot
-ggsave(file=here("analysis_output/volcano_plot_tcga_de.png"),
+ggsave(file=here("analysis_output/volcano_plots/volcano_plot_tcga_de.png"),
     plot = volcano_plot_tcga_de, 
     device="png", width = 21.15, height = 15, units = "cm" 
     )
@@ -136,7 +136,7 @@ volcano_plot_combined_no_interation <- ggplot(data= volcano_plot_table, aes(x=lo
 print(volcano_plot_combined_no_interation)
 
 ## Saving volcano plot
-ggsave(file=here("analysis_output/volcano_plot_combined_no_interation.png"),
+ggsave(file=here("analysis_output/volcano_plots/volcano_plot_combined_no_interation.png"),
     plot = volcano_plot_combined_no_interation, 
     device="png", width = 21.15, height = 15, units = "cm" 
     )
@@ -177,7 +177,7 @@ volcano_plot_combined_only_interation <- ggplot(data= volcano_plot_table, aes(x=
 print(volcano_plot_combined_only_interation)
 
 ## Saving volcano plot
-ggsave(file=here("analysis_output/volcano_plot_combined_only_interation.png"),
+ggsave(file=here("analysis_output/volcano_plots/volcano_plot_combined_only_interation.png"),
     plot = volcano_plot_combined_only_interation, 
     device="png", width = 21.15, height = 15, units = "cm" 
     )
@@ -190,7 +190,7 @@ ggsave(file=here("analysis_output/volcano_plot_combined_only_interation.png"),
 ```{r volcano plot, warning=FALSE}
 
 #Loading data
-#combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
 
 # Getting the information about the TopGenes 
 table_all_genes <- combined_de_with_interaction[["topGenes"]][["table"]]
@@ -226,7 +226,7 @@ volcano_plot_combined_with_interation <- ggplot(data= volcano_plot_table, aes(x=
 print(volcano_plot_combined_with_interation)
 
 ## Saving volcano plot
-ggsave(file=here("analysis_output/volcano_plot_combined_with_interation.png"),
+ggsave(file=here("analysis_output/volcano_plots/volcano_plot_combined_with_interation.png"),
     plot = volcano_plot_combined_with_interation, 
     device="png", width = 23.97, height = 17, units = "cm" 
     )
@@ -239,7 +239,7 @@ ggsave(file=here("analysis_output/volcano_plot_combined_with_interation.png"),
 ```{r volcano plot, warning=FALSE}
 
 #Loading data
-#combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
 
 ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
 
@@ -302,11 +302,11 @@ volcano_plot_mitochondrial <- ggplot(data= volcano_plot_table, aes(x=logFC, y=PV
 print(volcano_plot_mitochondrial)
 
 ## Saving volcano plot
-ggsave(file=here("analysis_output/volcano_plot_mitochondrial.png"),
+ggsave(file=here("analysis_output/volcano_plots/volcano_plot_mitochondrial.png"),
     plot = volcano_plot_mitochondrial, 
     device="png", width = 23.97, height = 17, units = "cm"
     )
 
 # Export the dataframe to a csv file
-write.csv(mito_df, here("analysis_output/mito_df.csv"), row.names=FALSE)
+write.csv(mito_df, here("analysis_output/dataframes/mito_df.csv"), row.names=FALSE)
 ```

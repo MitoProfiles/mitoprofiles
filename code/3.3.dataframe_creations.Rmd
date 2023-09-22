@@ -49,9 +49,9 @@ top20_upregulated %>%
 
 # View the dataframe
 print(upregulated_df)
-
+  
 # Export the dataframe to a csv file
-write.csv(upregulated_df, here("analysis_output/upregulated_df.csv"), row.names=FALSE)
+write.csv(upregulated_df, here("analysis_output/dataframes/upregulated_df.csv"), row.names=FALSE)
 
 ```
 
@@ -93,5 +93,5 @@ top20_downregulated %>%
 print(downregulated_df)
 
 # Export the dataframe to a csv file
-write.csv(downregulated_df, here("analysis_output/downregulated_df.csv"), row.names=FALSE)
+write.csv(downregulated_df, here("analysis_output/dataframes/downregulated_df.csv"), row.names=FALSE)
 ```

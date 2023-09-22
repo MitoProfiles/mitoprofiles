@@ -105,7 +105,11 @@ plot(hclust_group_av,
      cex=0.4,
      main = "Dendrogram of Hierarchical Clustering - Group average")
 
+if (!dir.exists(here('analysis_output/heatmaps/'))) {
+  dir.create(here('analysis_output/heatmaps/'), recursive = TRUE)}
 
+# Save the heatmap as a PNG file
+pdf((file=here("analysis_output/heatmaps/heatmap_with_interaction.pdf")), width = 10.64, height = 8)  
 ## Heatmaps
 heatmap(ordered_dgelist_log2cpm, 
         Rowv = order(hclust_group_av$order), 
@@ -118,9 +122,8 @@ heatmap(ordered_dgelist_log2cpm,
         # col = topo.colors(256),
         # col = heat.colors(256),
         col= colorRampPalette(brewer.pal(8, "Blues"))(25),
-        ColSideColors = metadata_with_colors_ordered$sample_col)
-
-
+        ColSideColors = metadata_with_colors_ordered$sample_col) 
+dev.off()
 ```
 
 
@@ -128,8 +131,10 @@ heatmap(ordered_dgelist_log2cpm,
 
 ```{r fuzzy_clustering}
 
+set.seed(3)
+
 ## Run cmeans clustering algorithm, with 20 clusters, and 1.25 fuzzification parameter m
-#cmeans_res <- e1071::cmeans(ordered_dgelist_log2cpm, centers=20, m=1.25, dist = "manhattan", method = "cmeans")
+cmeans_res <- e1071::cmeans(ordered_dgelist_log2cpm, centers=20, m=1.25, dist = "manhattan", method = "cmeans")
 
 ## Save result
 write_rds(cmeans_res, file = here("data/analysis/cmeans_result.RDS"))
@@ -299,16 +304,39 @@ my_mfuzz.plot2 <- function (my_matrix, cl, mfrow = c(1, 1), colo, min.mem = 0, t
 }
 
 
-my_mfuzz.plot2(ordered_dgelist_log2cpm, cl = cmeans_res, mfrow = c(2,2),
-           x11 = FALSE, xlab = "Samples", 
-           centre = TRUE, centre.col = "gray10", centre.lwd = 0.1 #, time.labels = "", time.points = c(1, )
-           )
+my_mfuzz.plot2(ordered_dgelist_log2cpm, cl = cmeans_res, mfrow = c(2, 2),
+               x11 = FALSE, xlab = "Samples",
+               centre = TRUE, centre.col = "gray10", centre.lwd = 0.1)
 
 
 ## Genes present in each individual cluster
 cmeans_res$cluster[which(cmeans_res$cluster == 20)]
 
+# Create a directory to save the PNG files
+output_dir <- here("analysis_output/fuzzy_clustering")
+dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
+
+# Create a loop to generate and save plots for each set of 4 clusters
+num_clusters <- ncol(cmeans_res$membership)
+clusters_per_page <- 4
+
+for (page in 1:(num_clusters / clusters_per_page)) {
+  start_cluster <- (page - 1) * clusters_per_page + 1
+  end_cluster <- start_cluster + clusters_per_page - 1
+
+  # Create a sub-cluster object for the current clusters
+  sub_cmeans_res <- cmeans_res
+  sub_cmeans_res$membership[, -(start_cluster:end_cluster)] <- 0
+  
+  # Generate the plot
+  pdf_file <- here(output_dir, paste0("fuzzy_clustering_page", page, ".pdf"))
+  pdf(pdf_file, width = 8, height = 6)  
+  my_mfuzz.plot2(ordered_dgelist_log2cpm, cl = sub_cmeans_res, mfrow = c(2, 2),
+                 x11 = FALSE, xlab = "Samples",
+                 centre = TRUE, centre.col = "gray10", centre.lwd = 0.1)
+  dev.off()
+}
 ```
 
 

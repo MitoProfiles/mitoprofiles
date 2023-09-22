@@ -1,6 +1,6 @@
 ---
 title: "MitoSignatures"
-author: "Isabel Duarte"
+author: "Catarina Ferreira & Isabel Duarte"
 date: "2023-06-05"
 output: html_document
 ---
@@ -107,6 +107,9 @@ genes_v26_not_36[order(genes_v26_not_36)]
 
 ```{r dataframe for genes_v36, warning=FALSE}
 
+if (!dir.exists(here('analysis_output/dataframes/'))) {
+  dir.create(here('analysis_output/dataframes/'), recursive = TRUE)}
+
 ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
 
 # Creating dataframe for genes_v36_not_26 with gene symbol and name
@@ -135,7 +138,7 @@ ensembl_id_without_version_v36_missing <- ensembl_id_without_version_v36[!(ensem
 print(gene_v36_dataframe)
 
 # Export the dataframe to a csv file
-write.csv(gene_v36_dataframe, here("analysis_output/gene_v36_dataframe.csv"), row.names=TRUE)
+write.csv(gene_v36_dataframe, here("analysis_output/dataframes/gene_v36_dataframe.csv"), row.names=TRUE)
 
 ```
 
@@ -173,7 +176,7 @@ ensembl_id_without_version_v26_missing <- ensembl_id_without_version_v26[!(ensem
 print(gene_v26_dataframe)
 
 # Export the dataframe to a csv file
-write.csv(gene_v26_dataframe, here("analysis_output/gene_v26_dataframe.csv"), row.names=TRUE)
+write.csv(gene_v26_dataframe, here("analysis_output/dataframes/gene_v26_dataframe.csv"), row.names=TRUE)
 
 ```
 
@@ -228,14 +231,17 @@ print(pca_plot_organ)
 
 ```{r saving pca_analysis, warning=FALSE}
 
+if (!dir.exists(here('analysis_output/pca_plots/'))) {
+  dir.create(here('analysis_output/pca_plots/'), recursive = TRUE)}
+
 ## Saving pca plot
-ggsave(file=here("analysis_output/pca_plot_study.png"),
+ggsave(file=here("analysis_output/pca_plots/pca_plot_study.png"),
     plot = pca_plot_study, 
     device="png", width = 21.15, height = 15, units = "cm" 
     )
 
 ## Saving pca plot
-ggsave(file=here("analysis_output/pca_plot_organ.png"),
+ggsave(file=here("analysis_output/pca_plots/pca_plot_organ.png"),
     plot = pca_plot_organ, 
     device="png", width = 21.15, height = 15, units = "cm" 
     )

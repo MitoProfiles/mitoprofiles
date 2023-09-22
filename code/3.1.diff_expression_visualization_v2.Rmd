@@ -11,12 +11,12 @@ knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = FALSE)
 library(here)
 library(tidyverse)
 library(mitocarta)
-
 ```
 
 ## Function to plot the most extreme DEGs
 
 ```{r boxplot_funct, eval=TRUE}
+
 
 ## Function to plot the counts for extreme LFC differentially expressed genes
 
@@ -228,6 +228,7 @@ de_boxplots$combined_de_with_interaction$all <-
                     n_degs_to_plot = 10,
                     mito_yes_no = "no")
 
+
 ## Call the function for DEG files for each dataset only for mitochondrial genes
 de_boxplots$gtex$mito <- 
   plot_extreme_degs(diff_exprs_list = gtex_de,
@@ -256,55 +257,61 @@ de_boxplots$combined_de_with_interaction$mito <-
 ##
 #
 
+if (!dir.exists(here('analysis_output/all_genes_boxplots/'))) {
+  dir.create(here('analysis_output/all_genes_boxplots/'), recursive = TRUE)}
+
 ## Boxplots all genes
-ggsave(file=here("analysis_output/gtex_extreme_degs_boxplot.png"),
+ggsave(file=here("analysis_output/all_genes_boxplots/gtex_extreme_degs_boxplot.png"),
     plot = de_boxplots$gtex$all$p2_box_gene_cancer, 
     device="png", width = 29.7, height = 21, units = "cm" 
     ) 
 
-ggsave(file=here("analysis_output/tcga_extreme_degs_boxplot.png"),
+ggsave(file=here("analysis_output/all_genes_boxplots/tcga_extreme_degs_boxplot.png"),
     plot = de_boxplots$tcga$all$p2_box_gene_cancer, 
     device="png", width = 29.7, height = 21, units = "cm" 
     )
 
-ggsave(file=here("analysis_output/comb_NO_interac_extreme_degs_boxplot.png"),
+ggsave(file=here("analysis_output/all_genes_boxplots/comb_NO_interac_extreme_degs_boxplot.png"),
     plot = de_boxplots$combined_de_no_interaction$all$p2_box_gene_cancer, 
     device="png", width = 29.7, height = 21, units = "cm" 
     )
 
-ggsave(file=here("analysis_output/comb_ONLY_interac_extreme_degs_boxplot.png"),
+ggsave(file=here("analysis_output/all_genes_boxplots/comb_ONLY_interac_extreme_degs_boxplot.png"),
     plot = de_boxplots$combined_de_only_interaction$all$p2_box_gene_cancer, 
     device="png", width = 29.7, height = 21, units = "cm" 
     )
 
-ggsave(file=here("analysis_output/comb_WITH_interac_extreme_degs_boxplot.png"),
+ggsave(file=here("analysis_output/all_genes_boxplots/comb_WITH_interac_extreme_degs_boxplot.png"),
     plot = de_boxplots$combined_de_with_interaction$all$p2_box_gene_cancer, 
     device="png", width = 29.7, height = 21, units = "cm" 
     )
 
 
+if (!dir.exists(here('analysis_output/mito_genes_boxplots/'))) {
+  dir.create(here('analysis_output/mito_genes_boxplots/'), recursive = TRUE)}
+
 ## Boxplots mitochondrial genes
-ggsave(file=here("analysis_output/gtex_mito_degs_boxplot.png"),
+ggsave(file=here("analysis_output/mito_genes_boxplots/gtex_mito_degs_boxplot.png"),
     plot = de_boxplots$gtex$mito$p2_box_gene_cancer, 
     device="png", width = 29.7, height = 21, units = "cm" 
     ) 
 
-ggsave(file=here("analysis_output/tcga_mito_degs_boxplot.png"),
+ggsave(file=here("analysis_output/mito_genes_boxplots/tcga_mito_degs_boxplot.png"),
     plot = de_boxplots$tcga$mito$p2_box_gene_cancer, 
     device="png", width = 29.7, height = 21, units = "cm" 
     )
 
-ggsave(file=here("analysis_output/comb_NO_interac_mito_degs_boxplot.png"),
+ggsave(file=here("analysis_output/mito_genes_boxplots/comb_NO_interac_mito_degs_boxplot.png"),
     plot = de_boxplots$combined_de_no_interaction$mito$p2_box_gene_cancer, 
     device="png", width = 29.7, height = 21, units = "cm" 
     )
 
-ggsave(file=here("analysis_output/comb_ONLY_interac_mito_degs_boxplot.png"),
+ggsave(file=here("analysis_output/mito_genes_boxplots/comb_ONLY_interac_mito_degs_boxplot.png"),
     plot = de_boxplots$combined_de_only_interaction$mito$p2_box_gene_cancer, 
     device="png", width = 29.7, height = 21, units = "cm" 
     )
 
-ggsave(file=here("analysis_output/comb_WITH_interac_mito_degs_boxplot.png"),
+ggsave(file=here("analysis_output/mito_genes_boxplots/comb_WITH_interac_mito_degs_boxplot.png"),
     plot = de_boxplots$combined_de_with_interaction$mito$p2_box_gene_cancer, 
     device="png", width = 29.7, height = 21, units = "cm" 
     )
@@ -462,6 +469,3 @@ top_genes_df$merged$FDR_long <-
 saveRDS(top_genes_df$merged, file = here("data/analysis/top_genes_df_merged.RDS"))
 
 ```
-
-
-
