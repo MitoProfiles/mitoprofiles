@@ -20,26 +20,37 @@ library(patchwork)
 lrt_coef_df_merged <- readRDS(file = here("data/analysis/lrt_coef_df_merged.RDS"))
 top_genes_df_merged <- readRDS(file = here("data/analysis/top_genes_df_merged.RDS"))
 
+fig_path1 <- here("analysis_output/all_genes_boxplots/")
+fig_path2 <- here("analysis_output/mito_genes_boxplots/")
+
 ```
 
 
 ## Gene expression of Extreme DEGs 
 
-![](/data/iduarte/mitoprofiles/analysis_output/gtex_extreme_degs_boxplot.png)
-![](/data/iduarte/mitoprofiles/analysis_output/tcga_extreme_degs_boxplot.png)
-![](/data/iduarte/mitoprofiles/analysis_output/comb_NO_interac_extreme_degs_boxplot.png)
-![](/data/iduarte/mitoprofiles/analysis_output/comb_ONLY_interac_extreme_degs_boxplot.png)
-![](/data/iduarte/mitoprofiles/analysis_output/comb_WITH_interac_extreme_degs_boxplot.png)
+![](`r paste0(fig_path1, "gtex_extreme_degs_boxplot.png")`)
+
+![](`r paste0(fig_path1, "tcga_extreme_degs_boxplot.png")`)
+
+![](`r paste0(fig_path1, "comb_NO_interac_extreme_degs_boxplot.png")`)
+
+![](`r paste0(fig_path1, "comb_ONLY_interac_extreme_degs_boxplot.png")`)
+
+![](`r paste0(fig_path1, "comb_WITH_interac_extreme_degs_boxplot.png")`)
+
 
 
 ## Gene expression of Mitochondrial DEGs 
 
-![](/data/iduarte/mitoprofiles/analysis_output/gtex_mito_degs_boxplot.png)
-![](/data/iduarte/mitoprofiles/analysis_output/tcga_mito_degs_boxplot.png)
-![](/data/iduarte/mitoprofiles/analysis_output/comb_NO_interac_mito_degs_boxplot.png)
-![](/data/iduarte/mitoprofiles/analysis_output/comb_ONLY_interac_mito_degs_boxplot.png)
-![](/data/iduarte/mitoprofiles/analysis_output/comb_WITH_interac_mito_degs_boxplot.png)
+![](`r paste0(fig_path2, "gtex_mito_degs_boxplot.png")`)
 
+![](`r paste0(fig_path2, "tcga_mito_degs_boxplot.png")`)
+
+![](`r paste0(fig_path2, "comb_NO_interac_mito_degs_boxplot.png")`)
+
+![](`r paste0(fig_path2, "comb_ONLY_interac_mito_degs_boxplot.png")`)
+
+![](`r paste0(fig_path2, "comb_WITH_interac_mito_degs_boxplot.png")`)
 
 
 ## Visualize Coefficients of the different datasets and linear models
