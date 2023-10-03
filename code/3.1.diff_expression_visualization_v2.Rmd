@@ -185,12 +185,42 @@ plot_extreme_degs <- function (diff_exprs_list,
 ## NOTE | Do NOT KNIT this file because the loading of the RDS files is too slow and the knitting fails
 ## NOTE 2 | Cannot save the de_boxplots object to disk because it is HUGE (lobstr::obj_size(de_boxplots) is 33.13 GB)
 
-## Load the DE data
-gtex_de <- readRDS(file = here("data/analysis/gtex_de.RDS"))
-tcga_de <- readRDS(file = here("data/analysis/tcga_de.RDS"))
-combined_de_no_interaction <- readRDS(file = here("data/analysis/combined_de_no_interaction.RDS"))
-combined_de_only_interaction <- readRDS(file = here("data/analysis/combined_de_only_interaction.RDS"))
-combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+## Load the DE data and keep in memory only the required tables form the full list
+
+#GTEx
+gtex_de_full <- readRDS(file = here("data/analysis/gtex_de.RDS"))
+gtex_de <- list(data_clean = gtex_de_full$data_clean, 
+                 topGenes = gtex_de_full$topGenes, 
+                 lrt = gtex_de_full$lrt)
+rm(gtex_de_full)
+
+#TCGA
+tcga_de_full <- readRDS(file = here("data/analysis/tcga_de.RDS"))
+tcga_de <- list(data_clean = tcga_de_full$data_clean, 
+                 topGenes = tcga_de_full$topGenes, 
+                 lrt = tcga_de_full$lrt)
+rm(tcga_de_full)
+
+#Combined NO interaction
+combined_de_no_interaction_full <- readRDS(file = here("data/analysis/combined_de_no_interaction.RDS"))
+combined_de_no_interaction <- list(data_clean = combined_de_no_interaction_full$data_clean, 
+                 topGenes = combined_de_no_interaction_full$topGenes, 
+                 lrt = combined_de_no_interaction_full$lrt)
+rm(combined_de_no_interaction_full)
+
+#Combined ONLY interaction
+combined_de_only_interaction_full <- readRDS(file = here("data/analysis/combined_de_only_interaction.RDS"))
+combined_de_only_interaction <- list(data_clean = combined_de_only_interaction_full$data_clean, 
+                 topGenes = combined_de_only_interaction_full$topGenes, 
+                 lrt = combined_de_only_interaction_full$lrt)
+rm(combined_de_only_interaction_full)
+
+#Combined WITH interaction
+combined_de_with_interaction_full <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+combined_de_with_interaction <- list(data_clean = combined_de_with_interaction_full$data_clean, 
+                 topGenes = combined_de_with_interaction_full$topGenes, 
+                 lrt = combined_de_with_interaction_full$lrt)
+rm(combined_de_with_interaction_full)
 ```
 
 
