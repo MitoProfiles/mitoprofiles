@@ -17,7 +17,7 @@ library(biomaRt)
 
 ```{r upregulated table, warning=FALSE}
 
-combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+#combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
 ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
 
 table_all_genes <- combined_de_with_interaction[["topGenes"]][["table"]]
@@ -50,7 +50,11 @@ top20_upregulated %>%
 # View the dataframe
 print(upregulated_df)
   
+
 # Export the dataframe to a csv file
+if (!dir.exists(here('analysis_output/dataframes/'))) {
+  dir.create(here('analysis_output/dataframes/'), recursive = TRUE)}
+
 write.csv(upregulated_df, here("analysis_output/dataframes/upregulated_df.csv"), row.names=FALSE)
 
 ```
