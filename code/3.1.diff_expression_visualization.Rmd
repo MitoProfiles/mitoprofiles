@@ -15,9 +15,19 @@ library(patchwork)
 
 ```
 
+
+
+# NOTE: Cannot knit this script in < 200 GB RAM machines 
+
+This script has been superseded by its version 2.
+There is no need to run this script!
+
+
+
+
 ## Function to plot the most extreme DEGs
 
-```{r boxplot_funct, eval=TRUE}
+```{r boxplot_funct, eval=FALSE}
 
 ## Function to plot the counts for extreme LFC differentially expressed genes
 
@@ -181,7 +191,7 @@ plot_extreme_degs <- function (diff_exprs_list,
 
 ## Boxplots of the most extreme DEGs | All genes & Mitochondrial genes 
 
-```{r boxplots, dependson="degs_plot_function", eval=TRUE}
+```{r boxplots, dependson="degs_plot_function", eval=FALSE}
 #
 ##
 ### Boxplots
@@ -252,7 +262,7 @@ combined_de_with_interaction_plots$mito <-
 
 ## View the plots
 
-```{r view_boxplots, dependson="boxplots", eval=TRUE}
+```{r view_boxplots, dependson="boxplots", eval=FALSE}
 
 # Boxplots
 gtex_de_plots$all$plots$p2_box_gene_cancer
@@ -271,7 +281,7 @@ combined_de_with_interaction_plots$mito$plots$p2_box_gene_cancer
 
 ## Visualize Coefficients of the different datasets and linear models
 
-```{r coef, dependson="boxplots", eval=TRUE}
+```{r coef, dependson="boxplots", eval=FALSE}
 #
 ##
 ### Coefficients | Merge data to compare
@@ -330,7 +340,7 @@ lrt_coef_df$merged_long %>%
 
 ## Visualize LFC and CPMs of the different datasets and linear models
 
-```{r top_genes, dependson="boxplots", eval=TRUE}
+```{r top_genes, dependson="boxplots", eval=FALSE}
 
 #
 ##
