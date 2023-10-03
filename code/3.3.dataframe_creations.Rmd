@@ -15,7 +15,7 @@ library(biomaRt)
 
 
 
-```{r upregulated table, warning=FALSE}
+```{r upregulated_table, warning=FALSE}
 
 combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
 ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
@@ -61,7 +61,7 @@ write.csv(upregulated_df, here("analysis_output/dataframes/upregulated_df.csv"),
 
 
 
-```{r downregulated table, warning=FALSE}
+```{r downregulated_table, warning=FALSE}
 
 #combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
 ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")

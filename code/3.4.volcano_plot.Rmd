@@ -19,10 +19,14 @@ library(ggrepel)
 
 # Volcano plot for GTEx
 
-```{r volcano plot, warning=FALSE}
+```{r vp_gtex, warning=FALSE}
 
-#Loading data
-gtex_de <- readRDS(file = here("data/analysis/gtex_de.RDS"))
+# Loading data
+# gtex_de_full <- readRDS(file = here("data/analysis/gtex_de.RDS"))
+# gtex_de <- list(data_clean = gtex_de_full$data_clean, 
+#                  topGenes = gtex_de_full$topGenes)
+# rm(gtex_de_full)
+
 
 # Getting the information about the TopGenes 
 table_all_genes <- gtex_de[["topGenes"]][["table"]]
@@ -42,7 +46,7 @@ volcano_plot_table$Diff_expressed[volcano_plot_table$logFC < -0.5 & volcano_plot
 
 
 # Creating the volcano plot
-volcano_plot_gtex_de <- ggplot(data= volcano_plot_table, aes(x=logFC, y=PValue, col = Diff_expressed)) + 
+volcano_plot_gtex_de <- ggplot(data= volcano_plot_table, aes(x=logFC, y=-log10(PValue), col = Diff_expressed)) + 
   geom_vline(xintercept = c(-0.5, 0.5), col = "gray", linetype = 'dashed') + 
   geom_hline(yintercept = 0.01, col = "gray", linetype = 'dashed') +
   geom_point() +
@@ -61,10 +65,14 @@ ggsave(file=here("analysis_output/volcano_plots/volcano_plot_gtex_de.png"),
 
 # Volcano plot for TCGA
 
-```{r volcano plot, warning=FALSE}
+```{r vp_tcga, warning=FALSE}
 
 #Loading data
-tcga_de <- readRDS(file = here("data/analysis/tcga_de.RDS"))
+# tcga_de_full <- readRDS(file = here("data/analysis/tcga_de.RDS"))
+# tcga_de <- list(data_clean = tcga_de_full$data_clean, 
+#                  topGenes = tcga_de_full$topGenes)
+# rm(tcga_de_full)
+
 
 # Getting the information about the TopGenes 
 table_all_genes <- tcga_de[["topGenes"]][["table"]]
@@ -84,7 +92,7 @@ volcano_plot_table$Diff_expressed[volcano_plot_table$logFC < -0.5 & volcano_plot
 
 
 # Creating the volcano plot
-volcano_plot_tcga_de <- ggplot(data= volcano_plot_table, aes(x=logFC, y=PValue, col = Diff_expressed)) + 
+volcano_plot_tcga_de <- ggplot(data= volcano_plot_table, aes(x=logFC, y=-log10(PValue), col = Diff_expressed)) + 
   geom_vline(xintercept = c(-0.5, 0.5), col = "gray", linetype = 'dashed') + 
   geom_hline(yintercept = 0.01, col = "gray", linetype = 'dashed') +
   geom_point() +
@@ -103,10 +111,13 @@ ggsave(file=here("analysis_output/volcano_plots/volcano_plot_tcga_de.png"),
 
 # Volcano plot for combined no interaction
 
-```{r volcano plot, warning=FALSE}
+```{r vp_comb_no, warning=FALSE}
 
 #Loading data
-combined_de_no_interaction <- readRDS(file = here("data/analysis/combined_de_no_interaction.RDS"))
+# combined_de_no_interaction_full <- readRDS(file = here("data/analysis/combined_de_no_interaction.RDS"))
+# combined_de_no_interaction <- list(data_clean = combined_de_no_interaction_full$data_clean, 
+#                                    topGenes = combined_de_no_interaction_full$topGenes)
+# rm(combined_de_no_interaction_full)
 
 # Getting the information about the TopGenes 
 table_all_genes <- combined_de_no_interaction[["topGenes"]][["table"]]
@@ -126,7 +137,7 @@ volcano_plot_table$Diff_expressed[volcano_plot_table$logFC < -0.5 & volcano_plot
 
 
 # Creating the volcano plot
-volcano_plot_combined_no_interation <- ggplot(data= volcano_plot_table, aes(x=logFC, y=PValue, col = Diff_expressed)) + 
+volcano_plot_combined_no_interation <- ggplot(data= volcano_plot_table, aes(x=logFC, y=-log10(PValue), col = Diff_expressed)) + 
   geom_vline(xintercept = c(-0.5, 0.5), col = "gray", linetype = 'dashed') + 
   geom_hline(yintercept = 0.01, col = "gray", linetype = 'dashed') +
   geom_point(size = 2) +
@@ -145,10 +156,14 @@ ggsave(file=here("analysis_output/volcano_plots/volcano_plot_combined_no_interat
 
 # Volcano plot for combined only interaction
 
-```{r volcano plot, warning=FALSE}
+```{r vp_comb_only, warning=FALSE}
 
 #Loading data
-combined_de_only_interaction <- readRDS(file = here("data/analysis/combined_de_only_interaction.RDS"))
+# combined_de_only_interaction_full <- readRDS(file = here("data/analysis/combined_de_only_interaction.RDS"))
+# combined_de_only_interaction <- list(data_clean = combined_de_only_interaction_full$data_clean, 
+#                                    topGenes = combined_de_only_interaction_full$topGenes)
+# rm(combined_de_only_interaction_full)
+
 
 # Getting the information about the TopGenes 
 table_all_genes <- combined_de_only_interaction[["topGenes"]][["table"]]
@@ -167,7 +182,7 @@ volcano_plot_table$Diff_expressed[volcano_plot_table$logFC < -0.5 & volcano_plot
 
 
 # Creating the volcano plot
-volcano_plot_combined_only_interation <- ggplot(data= volcano_plot_table, aes(x=logFC, y=PValue, col = Diff_expressed)) + 
+volcano_plot_combined_only_interation <- ggplot(data= volcano_plot_table, aes(x=logFC, y=-log10(PValue), col = Diff_expressed)) + 
   geom_vline(xintercept = c(-0.5, 0.5), col = "gray", linetype = 'dashed') + 
   geom_hline(yintercept = 0.01, col = "gray", linetype = 'dashed') +
   geom_point(size = 2) +
@@ -187,10 +202,14 @@ ggsave(file=here("analysis_output/volcano_plots/volcano_plot_combined_only_inter
 
 # Volcano plot for combined with interaction
 
-```{r volcano plot, warning=FALSE}
+```{r vp_comb_with, warning=FALSE}
 
 #Loading data
-combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+# combined_de_with_interaction_full <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+# combined_de_with_interaction <- list(data_clean = combined_de_with_interaction_full$data_clean, 
+#                                    topGenes = combined_de_with_interaction_full$topGenes)
+# rm(combined_de_with_interaction_full)
+
 
 # Getting the information about the TopGenes 
 table_all_genes <- combined_de_with_interaction[["topGenes"]][["table"]]
@@ -213,7 +232,7 @@ volcano_plot_table$Diff_expressed[volcano_plot_table$logFC < -0.5 & volcano_plot
 
 
 # Creating the volcano plot
-volcano_plot_combined_with_interation <- ggplot(data= volcano_plot_table, aes(x=logFC, y=PValue, col = Diff_expressed)) + 
+volcano_plot_combined_with_interation <- ggplot(data= volcano_plot_table, aes(x=logFC, y=-log10(PValue), col = Diff_expressed)) + 
   geom_vline(xintercept = c(-0.5, 0.5), col = "gray", linetype = 'dashed') + 
   geom_hline(yintercept = 0.01, col = "gray", linetype = 'dashed') +
   geom_point(size = 1.5) +
@@ -236,10 +255,14 @@ ggsave(file=here("analysis_output/volcano_plots/volcano_plot_combined_with_inter
 
 # Volcano plot for combined with interaction for mitochondrial genes 
 
-```{r volcano plot, warning=FALSE}
+```{r vp_mito, warning=FALSE}
 
-#Loading data
-combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+# Loading data (repeated from previous chunk so that each chunk can be run individually)
+# combined_de_with_interaction_full <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+# combined_de_with_interaction <- list(data_clean = combined_de_with_interaction_full$data_clean, 
+#                                    topGenes = combined_de_with_interaction_full$topGenes)
+# rm(combined_de_with_interaction_full)
+
 
 ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
 
@@ -289,7 +312,7 @@ volcano_plot_table$Diff_expressed[volcano_plot_table$logFC < -0.5 & volcano_plot
 
 
 # Creating the volcano plot
-volcano_plot_mitochondrial <- ggplot(data= volcano_plot_table, aes(x=logFC, y=PValue, col = Diff_expressed)) + 
+volcano_plot_mitochondrial <- ggplot(data= volcano_plot_table, aes(x=logFC, y=-log10(PValue), col = Diff_expressed)) + 
   geom_vline(xintercept = c(-0.5, 0.5), col = "gray", linetype = 'dashed') + 
   geom_hline(yintercept = 0.01, col = "gray", linetype = 'dashed') +
   geom_point(size = 1.5) +
