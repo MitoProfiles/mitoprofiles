@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = TRUE)
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = FALSE)
 
 library(here)
 library(tidyverse)
@@ -16,320 +16,275 @@ library(mitocarta)
 library(ggrepel)
 ```
 
+# Function to process data
+
+```{r func_data_process}
+
+process_data <- function (diff_exp_data,
+                          my_logFC = 1,
+                          my_pval = 0.01) {
+  # Getting the TopGenes table and process them
+  volcano_plot_table <- diff_exp_data$topGenes$table %>%
+    rownames_to_column(var = "gene_id") %>%
+    mutate(gene_id = sub("\\..*", "", .$gene_id)) %>%
+    mutate(
+      diff_exprs = case_when(
+        logFC > my_logFC & PValue < my_pval ~ "UP",
+        logFC < -my_logFC & PValue < my_pval ~ "DOWN",
+        .default = "NO"
+      )
+    )
+  
+  ### Gene Annotation
+  # Get the ensembl gene annotations
+  ensembl <-
+    useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+  
+  # Fetch gene symbols and gene names
+  gene_info <- getBM(
+    attributes = c("ensembl_gene_id", "external_gene_name", "description"),
+    filters = "ensembl_gene_id",
+    values = volcano_plot_table$gene_id,
+    mart = ensembl
+  )
+  
+  # Merge diff exprs with annotations
+  volcano_plot_table2 <- left_join(volcano_plot_table,
+                                   gene_info,
+                                   join_by("gene_id" == "ensembl_gene_id"))
+  
+  # Keep ensembl ids when no gene name is available
+  volcano_plot_table3 <- volcano_plot_table2 %>%
+    mutate(
+      external_gene_name = coalesce(external_gene_name, gene_id),
+      external_gene_name = case_when(external_gene_name == "" ~ gene_id,
+                                     .default = external_gene_name)
+    )
+        
+  # Return the table with processed data
+  return(volcano_plot_table3)
+  
+}
+
+# Create a list to save the processed data 
+data_de_volcano <- list()
+
+```
 
 # Volcano plot for GTEx
 
 ```{r vp_gtex, warning=FALSE}
 
-# Loading data
-# gtex_de_full <- readRDS(file = here("data/analysis/gtex_de.RDS"))
-# gtex_de <- list(data_clean = gtex_de_full$data_clean, 
-#                  topGenes = gtex_de_full$topGenes)
-# rm(gtex_de_full)
+# Load GTEx data
+gtex_de_full <- readRDS(file = here("data/analysis/gtex_de.RDS"))
+gtex_de <- list(topGenes = gtex_de_full$topGenes)
+rm(gtex_de_full)
 
-
-# Getting the information about the TopGenes 
-table_all_genes <- gtex_de[["topGenes"]][["table"]]
-
-
-# Remove specific columns by index
-volcano_plot_table <- table_all_genes[, -c(2,3,5)]
-
-# Add a column to the data frame to specify if they are UP- or DOWN- regulated (log2fc respectively positive or negative)
-volcano_plot_table$Diff_expressed <- "NO"
-
-# if log2Foldchange > 0.5 and pvalue < 0.01, set as "UP"
-volcano_plot_table$Diff_expressed[volcano_plot_table$logFC > 0.5 & volcano_plot_table$PValue < 0.01] <- "UP"
-
-# if log2Foldchange < -0.5 and pvalue < 0.01, set as "DOWN"
-volcano_plot_table$Diff_expressed[volcano_plot_table$logFC < -0.5 & volcano_plot_table$PValue < 0.01] <- "DOWN"
-
+# Process the data
+data_de_volcano$gtex <- process_data(gtex_de, my_logFC=1, my_pval=0.01)
+# Free memory
+rm(gtex_de)
 
 # Creating the volcano plot
-volcano_plot_gtex_de <- ggplot(data= volcano_plot_table, aes(x=logFC, y=-log10(PValue), col = Diff_expressed)) + 
-  geom_vline(xintercept = c(-0.5, 0.5), col = "gray", linetype = 'dashed') + 
+volcano_plot_gtex <- ggplot(data_de_volcano$gtex, 
+                               aes(x=logFC, y=-log10(PValue), col=diff_exprs)) + 
+  geom_vline(xintercept = c(-1, 1), col = "gray", linetype = 'dashed') + 
   geom_hline(yintercept = 0.01, col = "gray", linetype = 'dashed') +
   geom_point() +
   scale_color_manual(values = c("#00AFBB", "grey", "#6800FF"), # to set the colours of our variable
-                     labels = c("Downregulated", "Not significant", "Upregulated"))
+                     labels = c("Downregulated", "Not significant", "Upregulated")) +
+  xlab("log2 Fold Change") +
+  ylab("-log10 (p value)")
 
-print(volcano_plot_gtex_de)
+print(volcano_plot_gtex)
 
 ## Saving volcano plot
-ggsave(file=here("analysis_output/volcano_plots/volcano_plot_gtex_de.png"),
-    plot = volcano_plot_gtex_de, 
-    device="png", width = 21.15, height = 15, units = "cm" 
+ggsave(file=here("analysis_output/volcano_plots/volcano_plot_gtex_de.pdf"),
+    plot = volcano_plot_gtex, 
+    device="pdf", width = 21.15, height = 15, units = "cm" 
     )
 ```
-
 
 # Volcano plot for TCGA
 
 ```{r vp_tcga, warning=FALSE}
 
-#Loading data
-# tcga_de_full <- readRDS(file = here("data/analysis/tcga_de.RDS"))
-# tcga_de <- list(data_clean = tcga_de_full$data_clean, 
-#                  topGenes = tcga_de_full$topGenes)
-# rm(tcga_de_full)
+# Load TCGA data
+tcga_de_full <- readRDS(file = here("data/analysis/tcga_de.RDS"))
+tcga_de <- list(topGenes = tcga_de_full$topGenes)
+rm(tcga_de_full)
 
-
-# Getting the information about the TopGenes 
-table_all_genes <- tcga_de[["topGenes"]][["table"]]
-
-
-# Remove specific columns by index
-volcano_plot_table <- table_all_genes[, -c(2,3,5)]
-
-# Add a column to the data frame to specify if they are UP- or DOWN- regulated (log2fc respectively positive or negative)
-volcano_plot_table$Diff_expressed <- "NO"
-
-# if log2Foldchange > 0.5 and pvalue < 0.01, set as "UP"
-volcano_plot_table$Diff_expressed[volcano_plot_table$logFC > 0.5 & volcano_plot_table$PValue < 0.01] <- "UP"
-
-# if log2Foldchange < -0.5 and pvalue < 0.01, set as "DOWN"
-volcano_plot_table$Diff_expressed[volcano_plot_table$logFC < -0.5 & volcano_plot_table$PValue < 0.01] <- "DOWN"
-
+# Process the data
+data_de_volcano$tcga <- process_data(tcga_de, my_logFC=1, my_pval=0.01)
+# Free memory
+rm(tcga_de)
 
 # Creating the volcano plot
-volcano_plot_tcga_de <- ggplot(data= volcano_plot_table, aes(x=logFC, y=-log10(PValue), col = Diff_expressed)) + 
-  geom_vline(xintercept = c(-0.5, 0.5), col = "gray", linetype = 'dashed') + 
+volcano_plot_tcga <- ggplot(data_de_volcano$tcga, 
+                            aes(x=logFC, y=-log10(PValue), col = diff_exprs)) + 
+  geom_vline(xintercept = c(-1, 1), col = "gray", linetype = 'dashed') + 
   geom_hline(yintercept = 0.01, col = "gray", linetype = 'dashed') +
   geom_point() +
   scale_color_manual(values = c("#00AFBB", "grey", "#6800FF"), # to set the colours of our variable
-                     labels = c("Downregulated", "Not significant", "Upregulated"))
+                     labels = c("Downregulated", "Not significant", "Upregulated")) +
+  xlab("log2 Fold Change") +
+  ylab("-log10 (p value)")
 
-print(volcano_plot_tcga_de)
+print(volcano_plot_tcga)
 
 ## Saving volcano plot
-ggsave(file=here("analysis_output/volcano_plots/volcano_plot_tcga_de.png"),
-    plot = volcano_plot_tcga_de, 
-    device="png", width = 21.15, height = 15, units = "cm" 
+ggsave(file=here("analysis_output/volcano_plots/volcano_plot_tcga_de.pdf"),
+    plot = volcano_plot_tcga, 
+    device="pdf", width = 21.15, height = 15, units = "cm" 
     )
 ```
-
 
 # Volcano plot for combined no interaction
 
 ```{r vp_comb_no, warning=FALSE}
 
-#Loading data
-# combined_de_no_interaction_full <- readRDS(file = here("data/analysis/combined_de_no_interaction.RDS"))
-# combined_de_no_interaction <- list(data_clean = combined_de_no_interaction_full$data_clean, 
-#                                    topGenes = combined_de_no_interaction_full$topGenes)
-# rm(combined_de_no_interaction_full)
+# Load Combined data no interaction
+combined_de_no_interaction_full <- readRDS(file = here("data/analysis/combined_de_no_interaction.RDS"))
+combined_de_no_interaction <- list(topGenes = combined_de_no_interaction_full$topGenes)
+rm(combined_de_no_interaction_full)
 
-# Getting the information about the TopGenes 
-table_all_genes <- combined_de_no_interaction[["topGenes"]][["table"]]
-
-
-# Remove specific columns by index
-volcano_plot_table <- table_all_genes[, -c(2,3,5)]
-
-# Add a column to the data frame to specify if they are UP- or DOWN- regulated (log2fc respectively positive or negative)
-volcano_plot_table$Diff_expressed <- "NO"
-
-# if log2Foldchange > 0.5 and pvalue < 0.01, set as "UP"
-volcano_plot_table$Diff_expressed[volcano_plot_table$logFC > 0.5 & volcano_plot_table$PValue < 0.01] <- "UP"
-
-# if log2Foldchange < -0.5 and pvalue < 0.01, set as "DOWN"
-volcano_plot_table$Diff_expressed[volcano_plot_table$logFC < -0.5 & volcano_plot_table$PValue < 0.01] <- "DOWN"
-
+# Process the data
+data_de_volcano$comb_no <- process_data(combined_de_no_interaction, my_logFC=1, my_pval=0.01)
+# Free memory
+rm(combined_de_no_interaction)
 
 # Creating the volcano plot
-volcano_plot_combined_no_interation <- ggplot(data= volcano_plot_table, aes(x=logFC, y=-log10(PValue), col = Diff_expressed)) + 
-  geom_vline(xintercept = c(-0.5, 0.5), col = "gray", linetype = 'dashed') + 
+volcano_plot_combined_no_interation <- ggplot(data_de_volcano$comb_no, 
+                                              aes(x=logFC, y=-log10(PValue), col = diff_exprs)) + 
+  geom_vline(xintercept = c(-1, 1), col = "gray", linetype = 'dashed') + 
   geom_hline(yintercept = 0.01, col = "gray", linetype = 'dashed') +
   geom_point(size = 2) +
   scale_color_manual(values = c("#00AFBB", "grey", "#6800FF"), # to set the colours of our variable
-                     labels = c("Downregulated", "Not significant", "Upregulated"))
+                     labels = c("Downregulated", "Not significant", "Upregulated")) +
+  xlab("log2 Fold Change") +
+  ylab("-log10 (p value)")
 
 print(volcano_plot_combined_no_interation)
 
 ## Saving volcano plot
-ggsave(file=here("analysis_output/volcano_plots/volcano_plot_combined_no_interation.png"),
+ggsave(file=here("analysis_output/volcano_plots/volcano_plot_combined_no_interation.pdf"),
     plot = volcano_plot_combined_no_interation, 
-    device="png", width = 21.15, height = 15, units = "cm" 
+    device="pdf", width = 21.15, height = 15, units = "cm" 
     )
 ```
-
 
 # Volcano plot for combined only interaction
 
 ```{r vp_comb_only, warning=FALSE}
 
-#Loading data
-# combined_de_only_interaction_full <- readRDS(file = here("data/analysis/combined_de_only_interaction.RDS"))
-# combined_de_only_interaction <- list(data_clean = combined_de_only_interaction_full$data_clean, 
-#                                    topGenes = combined_de_only_interaction_full$topGenes)
-# rm(combined_de_only_interaction_full)
+# Load Combined data only interaction
+combined_de_only_interaction_full <- readRDS(file = here("data/analysis/combined_de_only_interaction.RDS"))
+combined_de_only_interaction <- list(topGenes = combined_de_only_interaction_full$topGenes)
+rm(combined_de_only_interaction_full)
 
-
-# Getting the information about the TopGenes 
-table_all_genes <- combined_de_only_interaction[["topGenes"]][["table"]]
-
-# Remove specific columns by index
-volcano_plot_table <- table_all_genes[, -c(2,3,5)]
-
-# Add a column to the data frame to specify if they are UP- or DOWN- regulated (log2fc respectively positive or negative)
-volcano_plot_table$Diff_expressed <- "NO"
-
-# if log2Foldchange > 0.5 and pvalue < 0.01, set as "UP"
-volcano_plot_table$Diff_expressed[volcano_plot_table$logFC > 0.5 & volcano_plot_table$PValue < 0.01] <- "UP"
-
-# if log2Foldchange < -0.5 and pvalue < 0.01, set as "DOWN"
-volcano_plot_table$Diff_expressed[volcano_plot_table$logFC < -0.5 & volcano_plot_table$PValue < 0.01] <- "DOWN"
-
+# Process the data
+data_de_volcano$comb_only <- process_data(combined_de_only_interaction, my_logFC=1, my_pval=0.01)
+# Free memory
+rm(combined_de_only_interaction)
 
 # Creating the volcano plot
-volcano_plot_combined_only_interation <- ggplot(data= volcano_plot_table, aes(x=logFC, y=-log10(PValue), col = Diff_expressed)) + 
-  geom_vline(xintercept = c(-0.5, 0.5), col = "gray", linetype = 'dashed') + 
+volcano_plot_combined_only_interation <- ggplot(data_de_volcano$comb_only, 
+                                                aes(x=logFC, y=-log10(PValue), col = diff_exprs)) + 
+  geom_vline(xintercept = c(-1, 1), col = "gray", linetype = 'dashed') + 
   geom_hline(yintercept = 0.01, col = "gray", linetype = 'dashed') +
   geom_point(size = 2) +
   scale_color_manual(values = c("#00AFBB", "grey", "#6800FF"), # to set the colours of our variable
-                     labels = c("Downregulated", "Not significant", "Upregulated"))
+                     labels = c("Downregulated", "Not significant", "Upregulated")) +
+  xlab("log2 Fold Change") +
+  ylab("-log10 (p value)")
 
 print(volcano_plot_combined_only_interation)
 
 ## Saving volcano plot
-ggsave(file=here("analysis_output/volcano_plots/volcano_plot_combined_only_interation.png"),
+ggsave(file=here("analysis_output/volcano_plots/volcano_plot_combined_only_interation.pdf"),
     plot = volcano_plot_combined_only_interation, 
-    device="png", width = 21.15, height = 15, units = "cm" 
+    device="pdf", width = 21.15, height = 15, units = "cm" 
     )
 ```
 
-
-
-# Volcano plot for combined with interaction
+# Volcano plot for combined with interaction | All genes and Mitochondrial genes
 
 ```{r vp_comb_with, warning=FALSE}
 
-#Loading data
-# combined_de_with_interaction_full <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
-# combined_de_with_interaction <- list(data_clean = combined_de_with_interaction_full$data_clean, 
-#                                    topGenes = combined_de_with_interaction_full$topGenes)
-# rm(combined_de_with_interaction_full)
+# Load Combined data with interaction
+combined_de_with_interaction_full <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
+combined_de_with_interaction <- list(topGenes = combined_de_with_interaction_full$topGenes)
+rm(combined_de_with_interaction_full)
 
-
-# Getting the information about the TopGenes 
-table_all_genes <- combined_de_with_interaction[["topGenes"]][["table"]]
-
-# Creating table with the mitochondrial genes
-table_all_genes %>%
-  rownames_to_column(var = "ensembl_gene_id") -> all_df
-
-# Remove specific columns by index
-volcano_plot_table <- all_df[, -c(3,4,6)]
-
-# Add a column to the data frame to specify if they are UP- or DOWN- regulated (log2fc respectively positive or negative)
-volcano_plot_table$Diff_expressed <- "NO"
-
-# if log2Foldchange > 0.5 and pvalue < 0.01, set as "UP"
-volcano_plot_table$Diff_expressed[volcano_plot_table$logFC > 0.5 & volcano_plot_table$PValue < 0.01] <- "UP"
-
-# if log2Foldchange < -0.5 and pvalue < 0.01, set as "DOWN"
-volcano_plot_table$Diff_expressed[volcano_plot_table$logFC < -0.5 & volcano_plot_table$PValue < 0.01] <- "DOWN"
-
+# Process the data
+data_de_volcano$comb_with <- process_data(combined_de_with_interaction, my_logFC=1, my_pval=0.01)
+# Free memory
+rm(combined_de_with_interaction)
 
 # Creating the volcano plot
-volcano_plot_combined_with_interation <- ggplot(data= volcano_plot_table, aes(x=logFC, y=-log10(PValue), col = Diff_expressed)) + 
-  geom_vline(xintercept = c(-0.5, 0.5), col = "gray", linetype = 'dashed') + 
-  geom_hline(yintercept = 0.01, col = "gray", linetype = 'dashed') +
+volcano_plot_combined_with_interation <- ggplot(data_de_volcano$comb_with, 
+                                                aes(x=logFC, y=-log10(FDR), col = diff_exprs)) + 
+  geom_vline(xintercept = c(-1, 1), col = "gray", linetype = 'dashed') + 
+  geom_hline(yintercept = -log10(0.01), col = "gray", linetype = 'dashed') +
   geom_point(size = 1.5) +
-  geom_text_repel(data = filter(volcano_plot_table, logFC < -7 | logFC > 7), 
-                  aes(label = ensembl_gene_id, vjust = -0.01, nudge_y = 0.5),
-                  size = 3, angle = 90) +
+  geom_text_repel(data = filter(data_de_volcano$comb_with, logFC < -7 | logFC > 7), 
+                  aes(label = external_gene_name),
+                  size = 2) +
   scale_color_manual(values = c("#00AFBB", "grey", "#6800FF"), # to set the colours of our variable
-                     labels = c("Downregulated", "Not significant", "Upregulated"))
+                     labels = c("Downregulated", "Not significant", "Upregulated")) +
+  xlab("log2 Fold Change") +
+  ylab("-log10 (p value)")
 
 print(volcano_plot_combined_with_interation)
 
 ## Saving volcano plot
-ggsave(file=here("analysis_output/volcano_plots/volcano_plot_combined_with_interation.png"),
+ggsave(file=here("analysis_output/volcano_plots/volcano_plot_combined_with_interation.pdf"),
     plot = volcano_plot_combined_with_interation, 
-    device="png", width = 23.97, height = 17, units = "cm" 
+    device="pdf", width = 23.97, height = 17, units = "cm" 
     )
-```
 
+#
+##
+### Volcano plot for combined with interaction for mitochondrial genes | Corrected Volcano Plot
+##
+#
 
-
-# Volcano plot for combined with interaction for mitochondrial genes 
-
-```{r vp_mito, warning=FALSE}
-
-# Loading data (repeated from previous chunk so that each chunk can be run individually)
-# combined_de_with_interaction_full <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
-# combined_de_with_interaction <- list(data_clean = combined_de_with_interaction_full$data_clean, 
-#                                    topGenes = combined_de_with_interaction_full$topGenes)
-# rm(combined_de_with_interaction_full)
-
-
-ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
-
-table_all_genes <- combined_de_with_interaction[["topGenes"]][["table"]]
-
-# Fetching the ENSEMBLE id's
-all_ids <- rownames(table_all_genes)
-
-ensembl_id_without_version_up <- sub("\\..*", "", all_ids)
-
-rownames(table_all_genes) <- ensembl_id_without_version_up
-
-# Extract the mitochondrial genes
-mito_genes <- unlist(strsplit(
-      mitocarta::mitocarta_data$A_Human_MitoCarta3$EnsemblGeneID_mapping_version_20200130, "\\|"))
-
-# Filter rows with mitochondrial ensemble IDs
-filtered_df <- subset(table_all_genes, rownames(table_all_genes) %in% mito_genes)
-
-#ensembl_id_without_version_up <- sub("\\..*", "", upregulated_ids)
-
-## Fetch gene symbols and gene names
-gene_info_mito <- getBM(
-  attributes = c("ensembl_gene_id", "external_gene_name", "description"),
-  filters = "ensembl_gene_id",
-  values = mito_genes,
-  mart = ensembl
+# Filter the mitochondrial genes
+mito_genes <- unlist(
+  strsplit(
+    mitocarta::mitocarta_data$A_Human_MitoCarta3$EnsemblGeneID_mapping_version_20200130,
+    "\\|"
+  )
 )
 
-# Creating table with the mitochondrial genes
-filtered_df %>%
-  rownames_to_column(var = "ensembl_gene_id") %>%
-  left_join(., gene_info_mito, by = "ensembl_gene_id") -> mito_df
-
-
-# Remove specific columns by index
-volcano_plot_table <- mito_df[, -c(3,4,6,7,8,9)]
-
-# Add a column to the data frame to specify if they are UP- or DOWN- regulated (log2fc respectively positive or negative)
-volcano_plot_table$Diff_expressed <- "NO"
-
-# if log2Foldchange > 0.5 and pvalue < 0.01, set as "UP"
-volcano_plot_table$Diff_expressed[volcano_plot_table$logFC > 0.5 & volcano_plot_table$PValue < 0.01] <- "UP"
-
-# if log2Foldchange < -0.5 and pvalue < 0.01, set as "DOWN"
-volcano_plot_table$Diff_expressed[volcano_plot_table$logFC < -0.5 & volcano_plot_table$PValue < 0.01] <- "DOWN"
-
+# Filter rows with mitochondrial ensemble IDs
+data_de_volcano$comb_with_mito <- data_de_volcano$comb_with %>%
+  filter(gene_id %in% mito_genes)
 
 # Creating the volcano plot
-volcano_plot_mitochondrial <- ggplot(data= volcano_plot_table, aes(x=logFC, y=-log10(PValue), col = Diff_expressed)) + 
-  geom_vline(xintercept = c(-0.5, 0.5), col = "gray", linetype = 'dashed') + 
-  geom_hline(yintercept = 0.01, col = "gray", linetype = 'dashed') +
+volcano_plot_mitochondrial <- ggplot(data_de_volcano$comb_with_mito, 
+                                     aes(x=logFC, y=-log10(PValue), col = diff_exprs)) + 
+  geom_vline(xintercept = c(-1, 1), col = "gray", linetype = 'dashed') + 
+  geom_hline(yintercept = -log10(0.01), col = "gray", linetype = 'dashed') +
   geom_point(size = 1.5) +
-  geom_text_repel(data = filter(volcano_plot_table, logFC < -1 | logFC > 1), 
-                  aes(label = ensembl_gene_id, vjust = -0.01, nudge_y = 0.5),
-                  size = 3, angle = 90) +
+  geom_text_repel(data = filter(data_de_volcano$comb_with_mito, logFC < -1 | logFC > 1), 
+                  aes(label = external_gene_name),
+                  size = 2) +
   scale_color_manual(values = c("#00AFBB", "grey", "#6800FF"), # to set the colours of our variable
-                     labels = c("Downregulated", "Not significant", "Upregulated"))
+                     labels = c("Downregulated", "Not significant", "Upregulated")) +
+  xlab("log2 Fold Change") +
+  ylab("-log10 (p value)")
 
 print(volcano_plot_mitochondrial)
 
 ## Saving volcano plot
-ggsave(file=here("analysis_output/volcano_plots/volcano_plot_mitochondrial.png"),
+ggsave(file=here("analysis_output/volcano_plots/volcano_plot_mitochondrial.pdf"),
     plot = volcano_plot_mitochondrial, 
-    device="png", width = 23.97, height = 17, units = "cm"
+    device="pdf", width = 23.97, height = 17, units = "cm"
     )
 
 # Export the dataframe to a csv file
-write.csv(mito_df, here("analysis_output/dataframes/mito_df.csv"), row.names=FALSE)
+write.csv(data_de_volcano$comb_with_mito, 
+          here("analysis_output/dataframes/mito_df.csv"))
 ```
+
