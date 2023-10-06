@@ -53,14 +53,14 @@ gtex_fun$entrez_ids <- mapIds(org.Hs.eg.db,
 gtex_fun$go <- edgeR::goana.DGELRT(gtex_de$lrt, 
                                    geneid = gtex_fun$entrez_ids,
                                    species = "Hs")
-gtex_fun$top_go <- topGO(gtex_fun$go, sort="up", p.value = 0.05)
+gtex_fun$top_go <- topGO(gtex_fun$go, sort="up")
 
 
-# KEGG analysis
-gtex_fun$kegg <- edgeR::kegga.DGELRT(gtex_de$lrt, 
-                                     geneid = gtex_fun$entrez_ids,
-                                     species = "Hs")
-gtex_fun$top_kegg <- topKEGG(gtex_fun$kegg, sort="up", p.value = 0.05)
+# KEGG analysis # FAILS in 7 Oct 2023 | Error with https://rest.kegg.jp/link/pathway/hsa
+# gtex_fun$kegg <- edgeR::kegga.DGELRT(gtex_de$lrt, 
+#                                      geneid = gtex_fun$entrez_ids,
+#                                      species = "Hs")
+# gtex_fun$top_kegg <- topKEGG(gtex_fun$kegg, sort="up")
 
 # Print a sentence confirming that this chunk finished computing
 cat("Finished the GTEx functional enrichment analysis.")
@@ -89,14 +89,14 @@ tcga_fun$entrez_ids <- mapIds(org.Hs.eg.db,
 tcga_fun$go <- edgeR::goana.DGELRT(tcga_de$lrt, 
                                    geneid = tcga_fun$entrez_ids,
                                    species = "Hs")
-tcga_fun$top_go <- topGO(tcga_fun$go, sort="up", p.value = 0.05)
+tcga_fun$top_go <- topGO(tcga_fun$go, sort="up")
 
 
-# KEGG analysis
-tcga_fun$kegg <- edgeR::kegga.DGELRT(tcga_de$lrt, 
-                                     geneid = tcga_fun$entrez_ids,
-                                     species = "Hs")
-tcga_fun$top_kegg <- topKEGG(tcga_fun$kegg, sort="up", p.value = 0.05)
+# KEGG analysis # FAILS in 7 Oct 2023 | Error with https://rest.kegg.jp/link/pathway/hsa
+# tcga_fun$kegg <- edgeR::kegga.DGELRT(tcga_de$lrt, 
+#                                      geneid = tcga_fun$entrez_ids,
+#                                      species = "Hs")
+# tcga_fun$top_kegg <- topKEGG(tcga_fun$kegg, sort="up")
 
 # Print a sentence confirming that this chunk finished computing
 cat("Finished the TCGA functional enrichment analysis.")
@@ -125,14 +125,14 @@ combined_with_inter_fun$entrez_ids <- mapIds(org.Hs.eg.db,
 combined_with_inter_fun$go <- edgeR::goana.DGELRT(combined_de_with_interaction$lrt, 
                                    geneid = combined_with_inter_fun$entrez_ids,
                                    species = "Hs")
-combined_with_inter_fun$top_go <- topGO(combined_with_inter_fun$go, sort="up", p.value = 0.05)
+combined_with_inter_fun$top_go <- topGO(combined_with_inter_fun$go, sort="up")
 
 
-# KEGG analysis
-combined_with_inter_fun$kegg <- edgeR::kegga.DGELRT(combined_de_with_interaction$lrt, 
-                                     geneid = combined_with_inter_fun$entrez_ids,
-                                     species = "Hs")
-combined_with_inter_fun$top_kegg <- topKEGG(combined_with_inter_fun$kegg, sort="up", p.value = 0.05)
+# KEGG analysis # FAILS in 7 Oct 2023 | Error with https://rest.kegg.jp/link/pathway/hsa
+# combined_with_inter_fun$kegg <- edgeR::kegga.DGELRT(combined_de_with_interaction$lrt, 
+#                                      geneid = combined_with_inter_fun$entrez_ids,
+#                                      species = "Hs")
+# combined_with_inter_fun$top_kegg <- topKEGG(combined_with_inter_fun$kegg, sort="up")
 
 # Print a sentence confirming that this chunk finished computing
 cat("Finished the Combined GTEx TCGA functional enrichment analysis.")
