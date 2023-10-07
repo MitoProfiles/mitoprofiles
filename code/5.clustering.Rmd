@@ -78,6 +78,8 @@ ordered_dgelist_log2cpm <- dgelist_log2cpm[ ,
 
 ```{r hierarchical_clustering}
 
+set.seed(42)
+
 ## Calculate the distance matrix - SLOW STEP - UNCOMMENT WHEN NEEDED
 mito_dist_matrix <- dist(ordered_dgelist_log2cpm, method = "manhattan")
 
@@ -109,7 +111,9 @@ if (!dir.exists(here('analysis_output/heatmaps/'))) {
   dir.create(here('analysis_output/heatmaps/'), recursive = TRUE)}
 
 # Save the heatmap as a PNG file
-pdf((file=here("analysis_output/heatmaps/heatmap_with_interaction.pdf")), width = 10.64, height = 8)  
+pdf((file=here("analysis_output/heatmaps/heatmap_with_interaction.pdf")), 
+    width = 10.64, height = 8)  
+
 ## Heatmaps
 heatmap(ordered_dgelist_log2cpm, 
         Rowv = order(hclust_group_av$order), 
@@ -345,6 +349,8 @@ for (page in 1:(num_clusters / clusters_per_page)) {
 ## Biclustering | Not interesting to pursue
 
 ```{r biclust}
+
+set.seed(42)
 
 ## Transpose the count matrix, as biclustering requires samples in rows and genes in columns
 count_matrix <- t(ordered_dgelist_log2cpm)
