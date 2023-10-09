@@ -209,7 +209,7 @@ variance_explained <- (combined_pca_result$sdev^2) / sum(combined_pca_result$sde
 # Look at the results: PC1 vs PC2 scatter plot
 pca_plot_study <- ggplot(new_pca_scores_df, aes(x = PC1, y = PC2, color=study)) +
   geom_point(alpha=0.5) +
-  geom_text(data = filter(new_pca_scores_df, PC1>= 1e+07), aes(label = organ), vjust = 1.5, size = 3) +
+#  geom_text(data = filter(new_pca_scores_df, PC1>= 1e+07), aes(label = organ), vjust = 1.5, size = 3) +
   xlab("PC1 (78.054 %)") +
   ylab("PC2 (7.268 %)") +
   ggtitle("PCA Plot | Combined TCGA and GTEx data")
@@ -235,14 +235,14 @@ if (!dir.exists(here('analysis_output/pca_plots/'))) {
   dir.create(here('analysis_output/pca_plots/'), recursive = TRUE)}
 
 ## Saving pca plot
-ggsave(file=here("analysis_output/pca_plots/pca_plot_study.png"),
+ggsave(file=here("analysis_output/pca_plots/pca_plot_study.pdf"),
     plot = pca_plot_study, 
-    device="png", width = 21.15, height = 15, units = "cm" 
+    device="pdf", width = 21.15, height = 15, units = "cm" 
     )
 
 ## Saving pca plot
-ggsave(file=here("analysis_output/pca_plots/pca_plot_organ.png"),
+ggsave(file=here("analysis_output/pca_plots/pca_plot_organ.pdf"),
     plot = pca_plot_organ, 
-    device="png", width = 21.15, height = 15, units = "cm" 
+    device="pdf", width = 21.15, height = 15, units = "cm" 
     )
 ```
