@@ -14,7 +14,6 @@ library(mitocarta)
 library(biomaRt)
 library(edgeR)
 library(RColorBrewer)
-library(biclust)
 
 ```
 
@@ -62,6 +61,18 @@ combined_de_with_interaction$data_clean$metadata %>%
                                 sample_type == "non_cancer_liver" ~ "mediumpurple1",
                                 sample_type == "cancer_kidney" ~ "darkgoldenrod1",
                                 sample_type == "non_cancer_kidney" ~ "darkgoldenrod3")) %>%
+  mutate(labels = case_when(sample_type == "cancer_bladder" ~ "Bladder Cancer",
+                                sample_type == "non_cancer_bladder" ~ "Bladded Non-cancer",
+                                sample_type == "cancer_skin" ~ "Skin Cancer",
+                                sample_type == "non_cancer_skin" ~ "Skin Non-cancer",
+                                sample_type == "cancer_colon" ~ "Colon Cancer",
+                                sample_type == "non_cancer_colon" ~ "Colon Non-cancer",
+                                sample_type == "cancer_brain" ~ "Brain Cancer",
+                                sample_type == "non_cancer_brain" ~ "Brain Non-cancer",
+                                sample_type == "cancer_liver" ~ "Liver Cancer",
+                                sample_type == "non_cancer_liver" ~ "Liver Non-cancer",
+                                sample_type == "cancer_kidney" ~ "Kidney Cancer",
+                                sample_type == "non_cancer_kidney" ~ "Kidney Non-cancer")) %>%
   dplyr::arrange(organ,cancer_status) -> metadata_with_colors_ordered
 
 
@@ -159,47 +170,48 @@ dev.off()
 
 #### Heatmap visualization
 
-# Save the heatmap as a PDF file
-pdf((file=here("analysis_output/heatmaps/heatmap_with_interaction.pdf")), 
-    width = 10, height = 8)  
+# Change colnames from count matrix 
+dgelist_log2cpm_mito_ordered_2 <- dgelist_log2cpm_mito_ordered
+colnames(dgelist_log2cpm_mito_ordered_2) <- metadata_with_colors_ordered$labels
 
-  heatmap(dgelist_log2cpm_mito_ordered, 
+# Save the heatmap as a PDF file
+png((file=here("analysis_output/heatmaps/heatmap_with_interaction.png")), 
+    width = 2480, height = 1754, units = "px")  
+
+  heatmap(dgelist_log2cpm_mito_ordered_2, 
           Rowv = order(hclust_group_av$order), 
           Colv = NA,
           scale = "none", 
           symm = FALSE, 
-          cexRow=0.6, cexCol=0.3,
+          cexRow=2, cexCol=0.1, margins = c(10, 10),
           # main="Heatmap | Group linkage Hierarchical clustering",
-          # col = cm.colors(256),
-          # col = terrain.colors(256),
-          # col = topo.colors(256),
-          # col = heat.colors(256),
           col= colorRampPalette(brewer.pal(8, "Blues"))(25),
           ColSideColors = metadata_with_colors_ordered$sample_col)
+ 
   # Column color labels
-  mtext( "Bladder", side=3, cex = 1, line=2.65, at=c(0.175))
-  mtext( "NC", side=3, cex = 0.7, line=2, at=c(0.15))
-  mtext( "C", side=3, cex = 0.7, line=2, at=c(0.18))
+  mtext( "Bladder", side=3, cex = 2.5, line=0, at=c(0.25))
+  mtext( "NC", side=3, cex = 2, line=-1.8, at=c(0.235))
+  mtext( "C", side=3, cex = 2, line=-1.8, at=c(0.26))
   
-  mtext( "Skin", side=3, cex = 1, line=2.62, at=c(0.3))
-  mtext( "NC", side=3, cex = 0.7, line=2, at=c(0.25))
-  mtext( "C", side=3, cex = 0.7, line=2, at=c(0.34))
+  mtext( "Colon", side=3, cex = 2.5, line=0, at=c(0.35))
+  mtext( "NC", side=3, cex = 2, line=-1.8, at=c(0.32))
+  mtext( "C", side=3, cex = 2, line=-1.8, at=c(0.38))
   
-  mtext( "Colon", side=3, cex = 1, line=2.62, at=c(0.53))
-  mtext( "NC", side=3, cex = 0.7, line=2, at=c(0.45))
-  mtext( "C", side=3, cex = 0.7, line=2, at=c(0.565))
+  mtext( "Skin", side=3, cex = 2.5, line=0, at=c(0.51))
+  mtext( "NC", side=3, cex = 2, line=-1.8, at=c(0.48))
+  mtext( "C", side=3, cex = 2, line=-1.8, at=c(0.57))
   
-  mtext( "Brain", side=3, cex = 1, line=2.62, at=c(0.63))
-  mtext( "NC", side=3, cex = 0.7, line=2, at=c(0.61))
-  mtext( "C", side=3, cex = 0.7, line=2, at=c(0.67))
+  mtext( "Brain", side=3, cex = 2.5, line=0, at=c(0.64))
+  mtext( "NC", side=3, cex = 2, line=-1.8, at=c(0.615))
+  mtext( "C", side=3, cex = 2, line=-1.8, at=c(0.66))
   
-  mtext( "Liver", side=3, cex = 1, line=2.62, at=c(0.74))
-  mtext( "NC", side=3, cex = 0.7, line=2, at=c(0.72))
-  mtext( "C", side=3, cex = 0.7, line=2, at=c(0.79))
+  mtext( "Kidney", side=3, cex = 2.5, line=0, at=c(0.76))
+  mtext( "NC", side=3, cex = 2, line=-1.8, at=c(0.705))
+  mtext( "C", side=3, cex = 2, line=-1.8, at=c(0.775))
   
-  mtext( "Kidney", side=3, cex = 1, line=2.62, at=c(0.9))
-  mtext( "NC", side=3, cex = 0.7, line=2, at=c(0.865))
-  mtext( "C", side=3, cex = 0.7, line=2, at=c(0.91))
+  mtext( "Liver", side=3, cex = 2.5, line=0, at=c(0.85))
+  mtext( "NC", side=3, cex = 2, line=-1.8, at=c(0.825))
+  mtext( "C", side=3, cex = 2, line=-1.8, at=c(0.86))
   
 dev.off()
 
@@ -208,17 +220,23 @@ dev.off()
 
 ## Soft clustering | Fuzzy clustering with cmeans
 
-```{r fuzzy_clustering, eval=FALSE}
+```{r fuzzy_clustering, eval=TRUE}
 
 set.seed(3)
 
 ## Run cmeans clustering algorithm, with 20 clusters, and 1.25 fuzzification parameter m
-cmeans_res <- e1071::cmeans(dgelist_log2cpm_mito_ordered, centers=20, m=1.25, dist = "manhattan", method = "cmeans")
+cmeans_res <- e1071::cmeans(dgelist_log2cpm_mito_ordered, 
+                            centers=20, m=1.25, 
+                            dist = "manhattan", method = "cmeans")
 
 ## Save result
 write_rds(cmeans_res, file = here("data/analysis/cmeans_result.RDS"))
 
-## Plot clusters | Adapted from plotting function in Mfuzz package
+#
+##
+### Plot clusters | Adapted from plotting function in Mfuzz package
+##
+#
 
 my_mfuzz.plot2 <- function (my_matrix, cl, mfrow = c(1, 1), colo, min.mem = 0, time.labels, 
     time.points, ylim.set = c(0, 0), xlab = "Time", ylab = "Expression changes", 
@@ -382,40 +400,49 @@ my_mfuzz.plot2 <- function (my_matrix, cl, mfrow = c(1, 1), colo, min.mem = 0, t
     }
 }
 
-
+# Overview of all clusters
 my_mfuzz.plot2(dgelist_log2cpm_mito_ordered, cl = cmeans_res, mfrow = c(2, 2),
                x11 = FALSE, xlab = "Samples",
-               centre = TRUE, centre.col = "gray10", centre.lwd = 0.1)
+               centre = TRUE, centre.col = "gray50", centre.lwd = 0.05)
 
 
-## Genes present in each individual cluster
-cmeans_res$cluster[which(cmeans_res$cluster == 20)]
+## Check the genes present in each individual cluster
+cmeans_res$cluster
+cmeans_res$cluster[which(cmeans_res$cluster == 2)]
 
-# Create a directory to save the PNG files
-output_dir <- here("analysis_output/fuzzy_clustering")
-dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+## Convert named vector to a table with genes per cluster
+genes_per_cluster <-
+  enframe(sort(cmeans_res$cluster), name = "Genes", value = "Cluster") %>%
+  group_by(Cluster) %>%
+  summarise(Genes = paste(Genes, collapse = ", "))
+
+# Create a directory to save the results from the fuzzy clustering 
+if (!dir.exists(here('analysis_output/fuzzy_clustering/'))) {
+  dir.create(here('analysis_output/fuzzy_clustering/'), recursive = TRUE)}
+
+write.table(genes_per_cluster, 
+            file = here('analysis_output/fuzzy_clustering/genes_per_cluster.tsv'), 
+            quote = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
+
+#
+##
+### Save the cluster plots
+##
+#
 
 
-# Create a loop to generate and save plots for each set of 4 clusters
-num_clusters <- ncol(cmeans_res$membership)
-clusters_per_page <- 4
+# Open the graphics device with options for saving individual files 
+pdf(file = here("analysis_output/fuzzy_clustering/fuzzy_clusters_%03d.pdf"),
+    onefile = FALSE)
 
-for (page in 1:(num_clusters / clusters_per_page)) {
-  start_cluster <- (page - 1) * clusters_per_page + 1
-  end_cluster <- start_cluster + clusters_per_page - 1
-
-  # Create a sub-cluster object for the current clusters
-  sub_cmeans_res <- cmeans_res
-  sub_cmeans_res$membership[, -(start_cluster:end_cluster)] <- 0
-  
-  # Generate the plot
-  pdf_file <- here(output_dir, paste0("fuzzy_clustering_page", page, ".pdf"))
-  pdf(pdf_file, width = 8, height = 6)  
-  my_mfuzz.plot2(dgelist_log2cpm_mito_ordered, cl = sub_cmeans_res, mfrow = c(2, 2),
+# Apply plotting function
+my_mfuzz.plot2(dgelist_log2cpm_mito_ordered, cl = cmeans_res, mfrow = c(1, 1),
                  x11 = FALSE, xlab = "Samples",
-                 centre = TRUE, centre.col = "gray10", centre.lwd = 0.1)
-  dev.off()
-}
+                 centre = TRUE, centre.col = "gray50", centre.lwd = 0.01)
+
+# Close graphics device
+dev.off()
+
 ```
 
 
