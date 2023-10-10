@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = FALSE)
 library(here)
 library(tidyverse)
 library(mitocarta)
+library(biomaRt)
 library(edgeR)
 library(RColorBrewer)
 library(biclust)
@@ -19,11 +20,10 @@ library(biclust)
 
 ## Load and Format data
 
-```{r data}
+```{r load_data}
 
 ## Read the file with the diff expression data
 combined_de_with_interaction <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
-
 
 # Mitocarta Gene IDs
 mitocarta_gene_ids <-
@@ -41,14 +41,14 @@ mito_genes_index <- gsub("\\..*$", "",
 mito_dge_data_filtered <- combined_de_with_interaction$dge_data_filtered[mito_genes_index, ]
 
 ## Get the normalized CPM values for the mitochondrial genes
-dgelist_log2cpm <- cpm(mito_dge_data_filtered,
+dgelist_log2cpm_mito <- cpm(mito_dge_data_filtered,
                        normalized.lib.sizes = TRUE,
                        log = TRUE, prior.count = 2)
 
 
 ## Metadata | Create vector of colors for samples
 combined_de_with_interaction$data_clean$metadata %>%
-  filter(sample_id  %in% colnames(dgelist_log2cpm)) %>%
+  filter(sample_id  %in% colnames(dgelist_log2cpm_mito)) %>%
   mutate(sample_type = paste(cancer_status, organ, sep = "_")) %>%
   mutate(sample_col = case_when(sample_type == "cancer_bladder" ~ "tomato1",
                                 sample_type == "non_cancer_bladder" ~ "tomato3",
@@ -67,10 +67,12 @@ combined_de_with_interaction$data_clean$metadata %>%
 
 ## Order the columns of the original expression matrix by sample type
    ## (to keep all sample types together in the heatmap)
-ordered_dgelist_log2cpm <- dgelist_log2cpm[ , 
+dgelist_log2cpm_mito_ordered <- dgelist_log2cpm_mito[ , 
                                            match(metadata_with_colors_ordered$sample_id,
-                                                 colnames(dgelist_log2cpm))
+                                                 colnames(dgelist_log2cpm_mito))
                                            ]
+# Clean up
+rm(dgelist_log2cpm_mito)
 
 ```
 
@@ -80,8 +82,25 @@ ordered_dgelist_log2cpm <- dgelist_log2cpm[ ,
 
 set.seed(42)
 
-## Calculate the distance matrix - SLOW STEP - UNCOMMENT WHEN NEEDED
-mito_dist_matrix <- dist(ordered_dgelist_log2cpm, method = "manhattan")
+# Change the count matrix row names to gene symbols
+
+  # Get the ensembl gene annotations
+  ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+  
+  # Fetch gene symbols and gene names
+  gene_info <- getBM(
+    attributes = c("ensembl_gene_id", "external_gene_name", "description"),
+    filters = "ensembl_gene_id",
+    values = mitocarta_gene_ids,
+    mart = ensembl
+  )
+  
+  # Change row names from count matrix to gene symbols
+  row.names(dgelist_log2cpm_mito_ordered) <- gene_info$external_gene_name[gene_info$ensembl_gene_id %in% gsub("\\..*$", "", row.names(dgelist_log2cpm_mito_ordered))]
+  
+  
+ ## Calculate the distance matrix - SLOW STEP - UNCOMMENT WHEN NEEDED
+mito_dist_matrix <- dist(dgelist_log2cpm_mito_ordered, method = "manhattan")
 
 ## Save the distance matrix object
 saveRDS(mito_dist_matrix, file = here("data/analysis/clustering_mito_distance_matrix.RDS"))
@@ -96,49 +115,105 @@ hclust_max <- hclust(mito_dist_matrix, method = "complete")
 ## Group average
 hclust_group_av <- hclust(mito_dist_matrix, method = "average")
 
-## Visualize the dendrogram
-plot(hclust_min,
-     cex=0.4,
+
+### Visualize the dendrogram
+plot(hclust_min, cex=0.4, hang = -1,
      main = "Dendrogram of Hierarchical Clustering - Single linkage")
-plot(hclust_max, 
-     cex=0.4,
+
+plot(hclust_max, cex=0.4, hang = -1, 
      main = "Dendrogram of Hierarchical Clustering - Complete linkage")
-plot(hclust_group_av, 
-     cex=0.4,
+
+plot(hclust_group_av, cex=0.5, hang = -1, 
      main = "Dendrogram of Hierarchical Clustering - Group average")
+rect.hclust(hclust_group_av, k = 5, border = rainbow(5))
 
-if (!dir.exists(here('analysis_output/heatmaps/'))) {
-  dir.create(here('analysis_output/heatmaps/'), recursive = TRUE)}
 
-# Save the heatmap as a PNG file
-pdf((file=here("analysis_output/heatmaps/heatmap_with_interaction.pdf")), 
-    width = 10.64, height = 8)  
+### Save the hierarchical clustering dendrograms
+  if (!dir.exists(here('analysis_output/heatmaps/'))) {
+    dir.create(here('analysis_output/heatmaps/'), recursive = TRUE)}
 
-## Heatmaps
-heatmap(ordered_dgelist_log2cpm, 
-        Rowv = order(hclust_group_av$order), 
-        Colv = NA, 
-        scale = "none", 
-        symm = FALSE, 
-        cexRow=0.6, cexCol=0.3,
-        # col = cm.colors(256),
-        # col = terrain.colors(256),
-        # col = topo.colors(256),
-        # col = heat.colors(256),
-        col= colorRampPalette(brewer.pal(8, "Blues"))(25),
-        ColSideColors = metadata_with_colors_ordered$sample_col) 
+pdf(file=here("analysis_output/heatmaps/hierarchical_single.pdf"),
+      width = 9, height = 6)
+    plot(hclust_min, cex=0.4, hang=-1,
+         ylab="Distance", xlab="Gene Symbol (mitochondrial proteins)",
+         main = "Hierarchical Clustering - Single linkage")
 dev.off()
+
+pdf(file=here("analysis_output/heatmaps/hierarchical_complete.pdf"),
+      width = 9, height = 6)
+    plot(hclust_max, cex=0.4, hang=-1,
+         ylab="Distance", xlab="Gene Symbol (mitochondrial proteins)",
+         main = "Hierarchical Clustering - Complete linkage")
+dev.off()
+
+pdf(file=here("analysis_output/heatmaps/hierarchical_group.pdf"),
+      width = 9, height = 6)
+    plot(hclust_group_av, cex=0.4, hang=-1, 
+         ylab="Distance", xlab="Gene Symbol (mitochondrial proteins)",
+         main = "Hierarchical Clustering - Group average")
+    rect.hclust(hclust_group_av, k = 5, border = rainbow(5))
+dev.off()
+
+###
+
+
+#### Heatmap visualization
+
+# Save the heatmap as a PDF file
+pdf((file=here("analysis_output/heatmaps/heatmap_with_interaction.pdf")), 
+    width = 10, height = 8)  
+
+  heatmap(dgelist_log2cpm_mito_ordered, 
+          Rowv = order(hclust_group_av$order), 
+          Colv = NA,
+          scale = "none", 
+          symm = FALSE, 
+          cexRow=0.6, cexCol=0.3,
+          # main="Heatmap | Group linkage Hierarchical clustering",
+          # col = cm.colors(256),
+          # col = terrain.colors(256),
+          # col = topo.colors(256),
+          # col = heat.colors(256),
+          col= colorRampPalette(brewer.pal(8, "Blues"))(25),
+          ColSideColors = metadata_with_colors_ordered$sample_col)
+  # Column color labels
+  mtext( "Bladder", side=3, cex = 1, line=2.65, at=c(0.175))
+  mtext( "NC", side=3, cex = 0.7, line=2, at=c(0.15))
+  mtext( "C", side=3, cex = 0.7, line=2, at=c(0.18))
+  
+  mtext( "Skin", side=3, cex = 1, line=2.62, at=c(0.3))
+  mtext( "NC", side=3, cex = 0.7, line=2, at=c(0.25))
+  mtext( "C", side=3, cex = 0.7, line=2, at=c(0.34))
+  
+  mtext( "Colon", side=3, cex = 1, line=2.62, at=c(0.53))
+  mtext( "NC", side=3, cex = 0.7, line=2, at=c(0.45))
+  mtext( "C", side=3, cex = 0.7, line=2, at=c(0.565))
+  
+  mtext( "Brain", side=3, cex = 1, line=2.62, at=c(0.63))
+  mtext( "NC", side=3, cex = 0.7, line=2, at=c(0.61))
+  mtext( "C", side=3, cex = 0.7, line=2, at=c(0.67))
+  
+  mtext( "Liver", side=3, cex = 1, line=2.62, at=c(0.74))
+  mtext( "NC", side=3, cex = 0.7, line=2, at=c(0.72))
+  mtext( "C", side=3, cex = 0.7, line=2, at=c(0.79))
+  
+  mtext( "Kidney", side=3, cex = 1, line=2.62, at=c(0.9))
+  mtext( "NC", side=3, cex = 0.7, line=2, at=c(0.865))
+  mtext( "C", side=3, cex = 0.7, line=2, at=c(0.91))
+  
+dev.off()
+
 ```
 
 
 ## Soft clustering | Fuzzy clustering with cmeans
 
-```{r fuzzy_clustering}
+```{r fuzzy_clustering, eval=FALSE}
 
 set.seed(3)
 
 ## Run cmeans clustering algorithm, with 20 clusters, and 1.25 fuzzification parameter m
-cmeans_res <- e1071::cmeans(ordered_dgelist_log2cpm, centers=20, m=1.25, dist = "manhattan", method = "cmeans")
+cmeans_res <- e1071::cmeans(dgelist_log2cpm_mito_ordered, centers=20, m=1.25, dist = "manhattan", method = "cmeans")
 
 ## Save result
 write_rds(cmeans_res, file = here("data/analysis/cmeans_result.RDS"))
@@ -308,7 +383,7 @@ my_mfuzz.plot2 <- function (my_matrix, cl, mfrow = c(1, 1), colo, min.mem = 0, t
 }
 
 
-my_mfuzz.plot2(ordered_dgelist_log2cpm, cl = cmeans_res, mfrow = c(2, 2),
+my_mfuzz.plot2(dgelist_log2cpm_mito_ordered, cl = cmeans_res, mfrow = c(2, 2),
                x11 = FALSE, xlab = "Samples",
                centre = TRUE, centre.col = "gray10", centre.lwd = 0.1)
 
@@ -336,7 +411,7 @@ for (page in 1:(num_clusters / clusters_per_page)) {
   # Generate the plot
   pdf_file <- here(output_dir, paste0("fuzzy_clustering_page", page, ".pdf"))
   pdf(pdf_file, width = 8, height = 6)  
-  my_mfuzz.plot2(ordered_dgelist_log2cpm, cl = sub_cmeans_res, mfrow = c(2, 2),
+  my_mfuzz.plot2(dgelist_log2cpm_mito_ordered, cl = sub_cmeans_res, mfrow = c(2, 2),
                  x11 = FALSE, xlab = "Samples",
                  centre = TRUE, centre.col = "gray10", centre.lwd = 0.1)
   dev.off()
@@ -344,27 +419,3 @@ for (page in 1:(num_clusters / clusters_per_page)) {
 ```
 
 
-
-
-## Biclustering | Not interesting to pursue
-
-```{r biclust}
-
-set.seed(42)
-
-## Transpose the count matrix, as biclustering requires samples in rows and genes in columns
-count_matrix <- t(ordered_dgelist_log2cpm)
-
-## Perform biclustering using biclust
-## TO DO | Choose the method
-biclust_result <- biclust(count_matrix, method = BCCC())
-
-## Print the biclusters
-print(biclust_result)
-
-## Draw the heatmap
-drawHeatmap2(count_matrix, bicResult = biclust_result, 
-             number=5, 
-             plotAll = FALSE)
-
-```
