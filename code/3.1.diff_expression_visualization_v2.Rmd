@@ -11,7 +11,14 @@ knitr::opts_chunk$set(echo=TRUE, message=FALSE, warnings=FALSE, cache = FALSE)
 library(here)
 library(tidyverse)
 library(mitocarta)
+library(biomaRt)
 ```
+
+## NOTE | Do NOT KNIT this file because the loading of the RDS files is too slow and the knitting fails
+
+## NOTE 2 | Cannot save the de_boxplots object to disk because it is HUGE (lobstr::obj_size(de_boxplots) is 33.13 GB)
+
+---
 
 ## Function to plot the most extreme DEGs
 
@@ -22,7 +29,8 @@ library(mitocarta)
 
 plot_extreme_degs <- function (diff_exprs_list,
                                n_degs_to_plot = 20,
-                               mito_yes_no = "no") {
+                               mito_yes_no = "no",
+                               mart = ensembl) {
   
   #### PLOTING FUNCTIONS | START ####
   boxplot_organ <-
@@ -36,7 +44,7 @@ plot_extreme_degs <- function (diff_exprs_list,
           hjust = 1
         )) +
         theme(legend.position = "bottom") +
-        facet_wrap(vars(gene_id), scales = "free_y")
+        facet_wrap(vars(gene_symbol), scales = "free_y")
     }
   
   boxplot_organ_and_cancer_status <-
@@ -45,7 +53,8 @@ plot_extreme_degs <- function (diff_exprs_list,
         x = interaction(organ, cancer_status),
         y = log2(counts + 1)
       )) +
-        geom_boxplot(aes(color = metabolic_rate)) +
+        # geom_boxplot(aes(color = metabolic_rate)) +
+        geom_boxplot(aes(color = cancer_status)) +
         labs(x = "Organs", y = "Log2 Gene Counts", title = my_title) +
         theme(axis.text.x = element_text(
           angle = 90,
@@ -53,7 +62,7 @@ plot_extreme_degs <- function (diff_exprs_list,
           hjust = 1
         )) +
         theme(legend.position = "bottom") +
-        facet_wrap(vars(gene_id), scales = "free_y")
+        facet_wrap(vars(gene_symbol), scales = "free_y")
     }
   #### PLOTING FUNCTIONS | END ####
   
@@ -133,20 +142,53 @@ plot_extreme_degs <- function (diff_exprs_list,
   ### Common steps
   ###
   
-  # Bind the top high and low DEGs
-  deg_analysis$extreme_de <-
-    dplyr::bind_rows (deg_analysis$low_exprs, deg_analysis$high_exprs)
-  
-  
   ### Create  a tidy dataframe with count values and metadata for selected DEGs
   # Add the metadata to the counts table (filtered by the genes with extreme LFC)
-  deg_analysis$extreme_de_counts_metadata <-
+  ### down regulated genes
+  deg_analysis$down_de_counts_metadata <-
     diff_exprs_list$data_clean$combined_counts %>%
-    filter(gene_id %in% row.names(deg_analysis$extreme_de)) %>%
+    filter(gene_id %in% row.names(deg_analysis$low_exprs)) %>%
     pivot_longer(names_to = "sample_id",
                  values_to = "counts",
                  cols = -1) %>%
+    mutate(fc_dir = "down") %>%
     left_join(., diff_exprs_list$data_clean$metadata, by = "sample_id")
+  ### up regulated genes
+  deg_analysis$up_de_counts_metadata <-
+    diff_exprs_list$data_clean$combined_counts %>%
+    filter(gene_id %in% row.names(deg_analysis$high_exprs)) %>%
+    pivot_longer(names_to = "sample_id",
+                 values_to = "counts",
+                 cols = -1) %>%
+    mutate(fc_dir = "up") %>%
+    left_join(., diff_exprs_list$data_clean$metadata, by = "sample_id")
+  
+  # Bind the top up and down regulated genes
+  deg_analysis$extreme_de_counts_metadata0 <- 
+    dplyr::bind_rows (deg_analysis$up_de_counts_metadata, 
+                      deg_analysis$down_de_counts_metadata) %>%
+    mutate(gene_id = gsub("\\..*$", "", gene_id))
+  
+  ### Gene symbols
+
+  # Fetch gene symbols and gene names
+  gene_info <- getBM(
+    attributes = c("ensembl_gene_id", "external_gene_name"),
+    filters = "ensembl_gene_id",
+    values = deg_analysis$extreme_de_counts_metadata0$gene_id,
+    mart = mart
+  )
+  
+  
+  deg_analysis$extreme_de_counts_metadata <-
+    deg_analysis$extreme_de_counts_metadata0 %>%
+    left_join(., gene_info, join_by("gene_id" == "ensembl_gene_id")) %>%
+    mutate(
+      external_gene_name = coalesce(external_gene_name, gene_id),
+      external_gene_name = case_when(external_gene_name == "" ~ gene_id,
+                                     .default = external_gene_name)
+    ) %>%
+    rename(gene_symbol = external_gene_name)
   
   ###
   ### Plot counts for selected DEGs
@@ -174,6 +216,32 @@ plot_extreme_degs <- function (diff_exprs_list,
   ) ->
     plots$p2_box_gene_cancer
   
+  # Boxplot of the Up Regulated genes
+  dplyr::filter(deg_analysis$extreme_de_counts_metadata,
+         fc_dir == "up") %>%
+  boxplot_organ_and_cancer_status(
+    counts_data = .,
+    my_title = ifelse(
+      mito_yes_no == "yes",
+      paste0("Up regulated Mitochondrial DEGs | ", dataset_name),
+      paste0("Up regulated DEGs | ", dataset_name)
+    )
+  ) ->
+    plots$p3_up_reg
+  
+  # Boxplot of the Down regulated genes
+  dplyr::filter(deg_analysis$extreme_de_counts_metadata,
+         fc_dir == "down") %>%
+  boxplot_organ_and_cancer_status(
+    counts_data = .,
+    my_title = ifelse(
+      mito_yes_no == "yes",
+      paste0("Down regulated Mitochondrial DEGs | ", dataset_name),
+      paste0("Down regulated DEGs | ", dataset_name)
+    )
+  ) ->
+    plots$p4_down_reg
+  
   ### Return the list with the analysis and plots
   return(plots)
 }
@@ -181,9 +249,6 @@ plot_extreme_degs <- function (diff_exprs_list,
 
 
 ```{r load_data, eval=FALSE}
-
-## NOTE | Do NOT KNIT this file because the loading of the RDS files is too slow and the knitting fails
-## NOTE 2 | Cannot save the de_boxplots object to disk because it is HUGE (lobstr::obj_size(de_boxplots) is 33.13 GB)
 
 ## Load the DE data and keep in memory only the required tables form the full list
 
@@ -224,7 +289,7 @@ rm(combined_de_with_interaction_full)
 ```
 
 
-## Creat Expression Boxplots of the most extreme DEGs and Save to PDF | All genes & Mitochondrial genes 
+## Create Expression Boxplots of the most extreme DEGs and Save to PDF | All genes & Mitochondrial genes 
 
 ```{r boxplots, dependson="boxplot_funct", eval=FALSE}
 #
@@ -236,50 +301,64 @@ rm(combined_de_with_interaction_full)
 ## Create the list to save the boxplot data
 de_boxplots <- list()
 
+######## HERE ###########
+## Get the mart object with ensembl gene annotations required by the plotting function
+#ensembl <- useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl", mirror = "asia")
+  
 ## Call the function for DEG files for each dataset
 de_boxplots$gtex$all <- 
   plot_extreme_degs(diff_exprs_list = gtex_de,
                     n_degs_to_plot = 10,
-                    mito_yes_no = "no")
+                    mito_yes_no = "no",
+                    mart = ensembl)
 de_boxplots$tcga$all <- 
   plot_extreme_degs(diff_exprs_list = tcga_de,
                     n_degs_to_plot = 10,
-                    mito_yes_no = "no")
+                    mito_yes_no = "no",
+                    mart = ensembl)
 de_boxplots$combined_de_no_interaction$all <- 
   plot_extreme_degs(diff_exprs_list = combined_de_no_interaction,
                     n_degs_to_plot = 10,
-                    mito_yes_no = "no")
+                    mito_yes_no = "no",
+                    mart = ensembl)
 de_boxplots$combined_de_only_interaction$all <- 
   plot_extreme_degs(diff_exprs_list = combined_de_only_interaction,
                     n_degs_to_plot = 10,
-                    mito_yes_no = "no")
+                    mito_yes_no = "no",
+                    mart = ensembl)
 de_boxplots$combined_de_with_interaction$all <- 
   plot_extreme_degs(diff_exprs_list = combined_de_with_interaction,
                     n_degs_to_plot = 10,
-                    mito_yes_no = "no")
+                    mito_yes_no = "no",
+                    mart = ensembl)
 
 
 ## Call the function for DEG files for each dataset only for mitochondrial genes
 de_boxplots$gtex$mito <- 
   plot_extreme_degs(diff_exprs_list = gtex_de,
                     n_degs_to_plot = 10,
-                    mito_yes_no = "yes")
+                    mito_yes_no = "yes",
+                    mart = ensembl)
 de_boxplots$tcga$mito <- 
   plot_extreme_degs(diff_exprs_list = tcga_de,
                     n_degs_to_plot = 10,
-                    mito_yes_no = "yes")
+                    mito_yes_no = "yes",
+                    mart = ensembl)
 de_boxplots$combined_de_no_interaction$mito <- 
   plot_extreme_degs(diff_exprs_list = combined_de_no_interaction,
                     n_degs_to_plot = 10,
-                    mito_yes_no = "yes")
+                    mito_yes_no = "yes",
+                    mart = ensembl)
 de_boxplots$combined_de_only_interaction$mito <- 
   plot_extreme_degs(diff_exprs_list = combined_de_only_interaction,
                     n_degs_to_plot = 10,
-                    mito_yes_no = "yes")
+                    mito_yes_no = "yes",
+                    mart = ensembl)
 de_boxplots$combined_de_with_interaction$mito <- 
   plot_extreme_degs(diff_exprs_list = combined_de_with_interaction,
                     n_degs_to_plot = 10,
-                    mito_yes_no = "yes")
+                    mito_yes_no = "yes",
+                    mart = ensembl)
 
 #
 ##
