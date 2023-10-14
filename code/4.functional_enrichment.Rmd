@@ -198,8 +198,11 @@ combined_with_inter_fun$gprofiler <- gprofiler2::gost(
 )
 
 # Plot the results
-gprofiler2::gostplot(combined_with_inter_fun$gprofiler)
-
+combined_with_inter_fun$gprofiler$plot<- gprofiler2::gostplot(combined_with_inter_fun$gprofiler,
+                                                              interactive = FALSE)
+gprofiler2::publish_gostplot(combined_with_inter_fun$gprofiler$plot,
+                             filename = here("analysis_output/comb_with_inter_gostplot.pdf"),
+                             width = 10, height = 6)
 
 # Print a sentence confirming that this chunk finished computing
 cat("Finished the gprofiler Combined functional enrichment analysis.")
