@@ -30,7 +30,7 @@ library(ggpattern)
 ### Function to format data | ALL DEGs
 ##
 #
-format_data <- function (diff_exprs_list, n_degs_to_plot, mart = ensembl) {
+format_data <- function (diff_exprs_list, n_degs_to_plot=12, mart = ensembl) {
   
   # Create list to hold objects from this analysis
   deg_analysis <- list()
@@ -99,9 +99,25 @@ format_data <- function (diff_exprs_list, n_degs_to_plot, mart = ensembl) {
                                      .default = external_gene_name) ) %>%
     rename(gene_symbol = external_gene_name)
   
+  ### Summary table with Up and Down regulated genes
+  deg_analysis$sum_table <- dplyr::bind_rows (rownames_to_column(deg_analysis$low_exprs, var = "gene_id"),
+                                              arrange(rownames_to_column(deg_analysis$high_exprs, var = "gene_id"),
+                                                      desc(logFC))) %>%
+    mutate(gene_id = gsub("\\..*$", "", gene_id)) %>%
+    left_join(., gene_info, join_by("gene_id" == "ensembl_gene_id"), 
+                                    multiple = "first", 
+                                    relationship = "many-to-many") %>%
+    mutate(
+      external_gene_name = coalesce(external_gene_name, gene_id),
+      external_gene_name = case_when(external_gene_name == "" ~ gene_id,
+                                     .default = external_gene_name) ) %>%
+    rename(gene_symbol = external_gene_name) %>%
+    relocate(gene_symbol, .after = gene_id)
+  
   ### Return the list with the data formatted for plots
   # return(deg_analysis)
-  return(deg_analysis$extreme_de_counts_metadata)
+  return(list(extreme_data = deg_analysis$extreme_de_counts_metadata, 
+              sum_table = deg_analysis$sum_table))
   
 }
 
@@ -111,7 +127,7 @@ format_data <- function (diff_exprs_list, n_degs_to_plot, mart = ensembl) {
 ### Function to format data | MITOCHONDRIAL DEGs
 ##
 #
-format_data_mito <- function (diff_exprs_list, n_degs_to_plot, mart, mitocarta_gene_ids = mitocarta_gene_ids) {
+format_data_mito <- function (diff_exprs_list, n_degs_to_plot=12, mart = ensembl, mitocarta_genes = mitocarta_gene_ids) {
   
   # Create list to hold objects from this analysis
   deg_analysis <- list()
@@ -197,18 +213,53 @@ format_data_mito <- function (diff_exprs_list, n_degs_to_plot, mart, mitocarta_g
                                      .default = external_gene_name) ) %>%
     rename(gene_symbol = external_gene_name)
   
+  ### Summary table with Up and Down regulated genes
+  deg_analysis$sum_table <- dplyr::bind_rows (rownames_to_column(deg_analysis$low_exprs, var = "gene_id"),
+                                              arrange(rownames_to_column(deg_analysis$high_exprs, var = "gene_id"),
+                                                      desc(logFC))) %>%
+    mutate(gene_id = gsub("\\..*$", "", gene_id)) %>%
+    left_join(., gene_info, join_by("gene_id" == "ensembl_gene_id"), 
+                                    multiple = "first", 
+                                    relationship = "many-to-many") %>%
+    mutate(
+      external_gene_name = coalesce(external_gene_name, gene_id),
+      external_gene_name = case_when(external_gene_name == "" ~ gene_id,
+                                     .default = external_gene_name) ) %>%
+    rename(gene_symbol = external_gene_name) %>%
+    relocate(gene_symbol, .after = gene_id)
+  
   ### Return the list with the data formatted for plots
   
   # return(deg_analysis)
-  return(deg_analysis$extreme_de_counts_metadata)
+  return(list(extreme_data = deg_analysis$extreme_de_counts_metadata, 
+              sum_table = deg_analysis$sum_table))
   
 }
 
 #
 ##
-### Function for boxplots using the formatted data
+### Function for boxplots using the formatted data #### HERE
 ##
 #
+
+plot_metab_and_cancer <-
+  function (counts_data, my_title = "") {
+    ggplot(counts_data, aes(x = metabolic_rate,
+                            y = log2(counts + 1))) +
+      geom_boxplot_pattern(aes(fill=metabolic_rate, pattern=cancer_status),
+                           pattern_size=0.2, linewidth=0.2, outlier.size = 0.2) +
+      labs(x = "Stripes = Healthy | Dots = Cancer", y = "Log2 Gene Counts", title = my_title) +
+      theme_light() +
+      theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust = 0.5, size = 7),
+            axis.title.x = element_text(vjust = -3),
+            plot.margin = margin(t=1,r=1,b=1,l=1, unit="cm")) +
+      theme(legend.position = "none") +
+      scale_x_discrete(labels=c(
+        "low" = "Low metabolism",
+        "high" = "High metabolism")) +
+      facet_wrap(vars(gene_symbol), scales = "free_y")
+  }
+
 plot_organ_and_cancer <-
   function (counts_data, my_title = "") {
     ggplot(counts_data, aes(x = interaction(organ, cancer_status),
@@ -217,11 +268,13 @@ plot_organ_and_cancer <-
       # geom_boxplot(aes(color = cancer_status)) +
       geom_boxplot_pattern(aes(fill=metabolic_rate, pattern=cancer_status),
                            pattern_size=0.2, linewidth=0.2, outlier.size = 0.2) +
+      stat_summary(mapping = aes(group = cancer_status), fun = mean, geom="line", 
+                   linetype="solid", color="gray10", linewidth=0.5) +
       labs(x = "Organs and Cancer status", y = "Log2 Gene Counts", title = my_title) +
       theme_light() +
       theme(axis.text.x = element_text(
         angle = 90, vjust = 0.5, hjust = 1, size = 7)) +
-      theme(legend.position = "bottom") +
+      theme(legend.position = "none") +
       scale_x_discrete(labels=c(
       "bladder.non_cancer" = "Bladder Healthy",
       "colon.non_cancer" = "Colon Healthy",
@@ -248,7 +301,7 @@ plot_organ_and_cancer <-
           vjust = 0.5,
           hjust = 1
         )) +
-        theme(legend.position = "bottom") +
+        theme(legend.position = "none") +
         facet_wrap(vars(gene_id), scales = "free_y")
     }
 
@@ -259,33 +312,33 @@ plot_organ_and_cancer <-
 
 ## Load the DE data and keep in memory only the required tables form the full list
 
-# #GTEx
-# gtex_de_full <- readRDS(file = here("data/analysis/gtex_de.RDS"))
-# gtex_de <- list(data_clean = gtex_de_full$data_clean,
-#                  topGenes = gtex_de_full$topGenes,
-#                  lrt = gtex_de_full$lrt)
-# rm(gtex_de_full)
-# 
-# #TCGA
-# tcga_de_full <- readRDS(file = here("data/analysis/tcga_de.RDS"))
-# tcga_de <- list(data_clean = tcga_de_full$data_clean,
-#                  topGenes = tcga_de_full$topGenes,
-#                  lrt = tcga_de_full$lrt)
-# rm(tcga_de_full)
-# 
-# #Combined NO interaction
-# combined_de_no_interaction_full <- readRDS(file = here("data/analysis/combined_de_no_interaction.RDS"))
-# combined_de_no_interaction <- list(data_clean = combined_de_no_interaction_full$data_clean,
-#                  topGenes = combined_de_no_interaction_full$topGenes,
-#                  lrt = combined_de_no_interaction_full$lrt)
-# rm(combined_de_no_interaction_full)
-# 
-# #Combined ONLY interaction
-# combined_de_only_interaction_full <- readRDS(file = here("data/analysis/combined_de_only_interaction.RDS"))
-# combined_de_only_interaction <- list(data_clean = combined_de_only_interaction_full$data_clean,
-#                  topGenes = combined_de_only_interaction_full$topGenes,
-#                  lrt = combined_de_only_interaction_full$lrt)
-# rm(combined_de_only_interaction_full)
+#GTEx
+gtex_de_full <- readRDS(file = here("data/analysis/gtex_de.RDS"))
+gtex_de <- list(data_clean = gtex_de_full$data_clean,
+                 topGenes = gtex_de_full$topGenes,
+                 lrt = gtex_de_full$lrt)
+rm(gtex_de_full)
+
+#TCGA
+tcga_de_full <- readRDS(file = here("data/analysis/tcga_de.RDS"))
+tcga_de <- list(data_clean = tcga_de_full$data_clean,
+                 topGenes = tcga_de_full$topGenes,
+                 lrt = tcga_de_full$lrt)
+rm(tcga_de_full)
+
+#Combined NO interaction
+combined_de_no_interaction_full <- readRDS(file = here("data/analysis/combined_de_no_interaction.RDS"))
+combined_de_no_interaction <- list(data_clean = combined_de_no_interaction_full$data_clean,
+                 topGenes = combined_de_no_interaction_full$topGenes,
+                 lrt = combined_de_no_interaction_full$lrt)
+rm(combined_de_no_interaction_full)
+
+#Combined ONLY interaction
+combined_de_only_interaction_full <- readRDS(file = here("data/analysis/combined_de_only_interaction.RDS"))
+combined_de_only_interaction <- list(data_clean = combined_de_only_interaction_full$data_clean,
+                 topGenes = combined_de_only_interaction_full$topGenes,
+                 lrt = combined_de_only_interaction_full$lrt)
+rm(combined_de_only_interaction_full)
 
 #Combined WITH interaction
 combined_de_with_interaction_full <- readRDS(file = here("data/analysis/combined_de_with_interaction.RDS"))
@@ -335,11 +388,14 @@ if (!dir.exists(here('analysis_output/all_genes_boxplots/'))) {
 if (!dir.exists(here('analysis_output/mito_genes_boxplots/'))) {
   dir.create(here('analysis_output/mito_genes_boxplots/'), recursive = TRUE)}
 
+if (!dir.exists(here('analysis_output/dataframes/'))) {
+  dir.create(here('analysis_output/dataframes/'), recursive = TRUE)}
+
 ```
 
 ## Boxplots for Combined with Interaction Dataset | The data discussed in the thesis
 
-```{r boxplots_comb_with, dependson="boxplots_prep", eval=FALSE}
+```{r boxplots_comb_with, dependson=c("boxplot_funct","load_data","boxplots_prep"), eval=FALSE}
 
 #
 ##
@@ -358,38 +414,68 @@ de_data$combined_de_with_interaction$mito <-
   format_data_mito(diff_exprs_list = combined_de_with_interaction,
                     n_degs_to_plot = 12,
                     mart = ensembl,
-                    mitocarta_gene_ids = mitocarta_gene_ids)
+                    mitocarta_genes = mitocarta_gene_ids)
 
+### 2. Plot the formatted data | ALL GENES 
 
-
-### 2. Plot the formatted data | ALL GENES
+  ### 2.1. Detailed per organ
 de_boxplots$combined_de_with_interaction$all$p1_up_reg <-
-  de_data$combined_de_with_interaction$all %>%
+  de_data$combined_de_with_interaction$all$extreme_data %>%
   filter(fc_dir == "up") %>%
   plot_organ_and_cancer(counts_data = .,
                                   my_title = "Up regulated DEGs | Combined with Interaction")
 
 de_boxplots$combined_de_with_interaction$all$p2_down_reg <-
-  de_data$combined_de_with_interaction$all %>%
+  de_data$combined_de_with_interaction$all$extreme_data %>%
   filter(fc_dir == "down") %>%
   plot_organ_and_cancer(counts_data = .,
                                   my_title = "Down regulated DEGs | Combined with Interaction")
 
 
+  ### 2.2. Per factor only (Metabolic rate and Cancer status)
+de_boxplots$combined_de_with_interaction$all$p3_up_reg <-
+  de_data$combined_de_with_interaction$all$extreme_data %>%
+  filter(fc_dir == "up") %>%
+  plot_metab_and_cancer(counts_data = .,
+                                  my_title = "Up regulated DEGs | Combined with Interaction")
+
+de_boxplots$combined_de_with_interaction$all$p4_down_reg <-
+  de_data$combined_de_with_interaction$all$extreme_data %>%
+  filter(fc_dir == "down") %>%
+  plot_metab_and_cancer(counts_data = .,
+                                  my_title = "Down regulated DEGs | Combined with Interaction")
+
+
 
 ### 3. Plot the formatted data | MITOCHONDRIAL GENES
+
+  ### 3.1. Detailed per organ
 de_boxplots$combined_de_with_interaction$mito$p1_up_reg <-
-  de_data$combined_de_with_interaction$mito %>%
+  de_data$combined_de_with_interaction$mito$extreme_data %>%
   filter(fc_dir == "up") %>%
   plot_organ_and_cancer(counts_data = .,
                                   my_title = "Up regulated Mito DEGs | Combined with Interaction")
 
 de_boxplots$combined_de_with_interaction$mito$p2_down_reg <-
-  de_data$combined_de_with_interaction$mito %>%
+  de_data$combined_de_with_interaction$mito$extreme_data %>%
   filter(fc_dir == "down") %>%
   plot_organ_and_cancer(counts_data = .,
                                   my_title = "Down regulated Mito DEGs | Combined with Interaction")
 
+
+  ### 3.2. Per factor only (Metabolic rate and Cancer status)
+
+de_boxplots$combined_de_with_interaction$mito$p3_up_reg <-
+  de_data$combined_de_with_interaction$mito$extreme_data %>%
+  filter(fc_dir == "up") %>%
+  plot_metab_and_cancer(counts_data = .,
+                                  my_title = "Up regulated Mito DEGs | Combined with Interaction")
+
+de_boxplots$combined_de_with_interaction$mito$p4_down_reg <-
+  de_data$combined_de_with_interaction$mito$extreme_data %>%
+  filter(fc_dir == "down") %>%
+  plot_metab_and_cancer(counts_data = .,
+                                  my_title = "Down regulated Mito DEGs | Combined with Interaction")
 
 
 ### 4. Export the boxplots to png
@@ -402,6 +488,13 @@ ggsave(file=here("analysis_output/all_genes_boxplots/comb_WITH_interac_down_degs
     plot = de_boxplots$combined_de_with_interaction$all$p2_down_reg, 
     device="png", width = 29.7, height = 21, units = "cm")
 
+ggsave(file=here("analysis_output/all_genes_boxplots/comb_WITH_interac_up_degs_boxplot2.png"),
+    plot = de_boxplots$combined_de_with_interaction$all$p3_up_reg, 
+    device="png", width = 29.7, height = 21, units = "cm")
+
+ggsave(file=here("analysis_output/all_genes_boxplots/comb_WITH_interac_down_degs_boxplot2.png"),
+    plot = de_boxplots$combined_de_with_interaction$all$p4_down_reg, 
+    device="png", width = 29.7, height = 21, units = "cm")
 
 
 #### 5. Export mitochondrial boxplots to png
@@ -414,6 +507,23 @@ ggsave(file=here("analysis_output/mito_genes_boxplots/comb_WITH_interac_mito_dow
     plot = de_boxplots$combined_de_with_interaction$mito$p2_down_reg, 
     device="png", width = 29.7, height = 21, units = "cm")
 
+ggsave(file=here("analysis_output/mito_genes_boxplots/comb_WITH_interac_mito_up_degs_boxplot2.png"),
+    plot = de_boxplots$combined_de_with_interaction$mito$p3_up_reg, 
+    device="png", width = 29.7, height = 21, units = "cm")
+
+ggsave(file=here("analysis_output/mito_genes_boxplots/comb_WITH_interac_mito_down_degs_boxplot2.png"),
+    plot = de_boxplots$combined_de_with_interaction$mito$p4_down_reg, 
+    device="png", width = 29.7, height = 21, units = "cm")
+
+
+#### 6. Save to file the summary tables
+write.table(de_data$combined_de_with_interaction$all$sum_table,
+            file = here("analysis_output/dataframes/up_down_reg_boxplot_all_df.csv"),
+            quote = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
+
+write.table(de_data$combined_de_with_interaction$mito$sum_table,
+            file = here("analysis_output/dataframes/up_down_reg_boxplot_mito_df.csv"),
+            quote = TRUE, sep = "\t", row.names = FALSE, col.names = TRUE)
 
 ```
 
@@ -437,7 +547,7 @@ de_data$gtex$mito <-
   format_data_mito(diff_exprs_list = gtex_de,
                     n_degs_to_plot = 10,
                     mart = ensembl,
-                    mitocarta_gene_ids = mitocarta_gene_ids)
+                    mitocarta_genes = mitocarta_gene_ids)
 
 #### TCGA ###
 de_data$tcga$all <- 
@@ -448,7 +558,7 @@ de_data$tcga$mito <-
   format_data_mito(diff_exprs_list = tcga_de,
                     n_degs_to_plot = 10,
                     mart = ensembl,
-                    mitocarta_gene_ids = mitocarta_gene_ids)
+                    mitocarta_genes = mitocarta_gene_ids)
 
 #### Combined no interaction ###
 de_data$comb_no$all <- 
@@ -459,7 +569,7 @@ de_data$comb_no$mito <-
   format_data_mito(diff_exprs_list = combined_de_no_interaction,
                     n_degs_to_plot = 10,
                     mart = ensembl,
-                    mitocarta_gene_ids = mitocarta_gene_ids)
+                    mitocarta_genes = mitocarta_gene_ids)
 
 #### Combined only interaction ###
 de_data$comb_only$all <- 
@@ -470,7 +580,7 @@ de_data$comb_only$mito <-
   format_data_mito(diff_exprs_list = combined_de_only_interaction,
                     n_degs_to_plot = 10,
                     mart = ensembl,
-                    mitocarta_gene_ids = mitocarta_gene_ids)
+                    mitocarta_genes = mitocarta_gene_ids)
 
 
 #
@@ -481,22 +591,22 @@ de_data$comb_only$mito <-
 
 #### Combined no interaction ###
 de_boxplots$comb_no$all$p1_extreme <-
-  plot_organ_and_cancer(counts_data = de_data$comb_no$all,
+  plot_organ_and_cancer(counts_data = de_data$comb_no$all$extreme_data,
                                   my_title = "Extreme DEGs | Combined no Interaction")
 
 #### Combined only interaction ###
 de_boxplots$comb_only$all$p1_extreme <-
-  plot_organ_and_cancer(counts_data = de_data$comb_only$all,
+  plot_organ_and_cancer(counts_data = de_data$comb_only$all$extreme_data,
                                   my_title = "Extreme DEGs | Combined only Interaction")
 
 # #### GTEx ### Not working! Error: At least one layer must contain all faceting variables: `gene_id`
 # de_boxplots$gtex$all$p1_extreme <-
-#   plot_organ(counts_data = de_data$gtex_de$all,
+#   plot_organ(counts_data = de_data$gtex_de$all$extreme_data,
 #                                   my_title = "Extreme DEGs | GTEx")
 # 
 # #### TCGA ### Not working! Error: At least one layer must contain all faceting variables: `gene_id`
 # de_boxplots$tcga$all$p1_extreme <-
-#   plot_organ(counts_data = de_data$tcga_de$all,
+#   plot_organ(counts_data = de_data$tcga_de$all$extreme_data,
 #                                   my_title = "Extreme DEGs | TCGA")
 
 #
@@ -507,22 +617,22 @@ de_boxplots$comb_only$all$p1_extreme <-
 
 #### Combined no interaction ###
 de_boxplots$comb_no$mito$p1_extreme <-
-  plot_organ_and_cancer(counts_data = de_data$comb_no$mito,
+  plot_organ_and_cancer(counts_data = de_data$comb_no$mito$extreme_data,
                                   my_title = "Extreme Mito DEGs | Combined no Interaction")
 
 #### Combined only interaction ###
 de_boxplots$comb_only$mito$p1_extreme <-
-  plot_organ_and_cancer(counts_data = de_data$comb_only$mito,
+  plot_organ_and_cancer(counts_data = de_data$comb_only$mito$extreme_data,
                                   my_title = "Extreme Mito DEGs | Combined only Interaction")
 
 # #### GTEx ### Not working!
 # de_boxplots$gtex$mito$p1_extreme <-
-#   plot_organ(counts_data = de_data$gtex_de$mito,
+#   plot_organ(counts_data = de_data$gtex_de$mito$extreme_data,
 #                                   my_title = "Extreme Mito DEGs | GTEx")
 # 
 # #### TCGA ### Not working!
 # de_boxplots$tcga$mito$p1_extreme <-
-#   plot_organ(counts_data = de_data$tcga_de$mito,
+#   plot_organ(counts_data = de_data$tcga_de$mito$extreme_data,
 #                                   my_title = "Extreme Mito DEGs | TCGA")
 
 #
@@ -579,7 +689,7 @@ ggsave(file=here("analysis_output/mito_genes_boxplots/comb_only_interac_mito_deg
 
 ```
 
-## Create tables for Coefficients of the different datasets and linear models
+## Create tables for Coefficients of the different datasets and linear models | For future comparisons between models
 
 ```{r coef, dependson="load_data", eval=TRUE}
 #
@@ -638,7 +748,7 @@ saveRDS(lrt_coef_df$merged, file = here("data/analysis/lrt_coef_df_merged.RDS"))
 
 ```
 
-## Create tables of LFC and CPMs of the different datasets and linear models
+## Create tables of LFC and CPMs of the different datasets and linear models | For future comparisons between models
 
 ```{r top_genes, dependson="load_data", eval=TRUE}
 
