@@ -1,4 +1,4 @@
-# mitoprofiles
+# Mitoprofiles
 
 Aiming to search for unique gene expression patterns characteristic of high metabolic-rate organs in cancer, an automated analysis pipeline was developed to ensure efficient, and reproducible data analysis.
 Therefore, for this study, we used the R programming language (version 4.2.2), which is freely available
